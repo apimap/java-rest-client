@@ -44,9 +44,12 @@ dependencies {
     implementation 'org.springdoc:springdoc-openapi-core:1.1.49'
     implementation 'commons-io:commons-io:20030203.000550'
 
-    api 'io.apimap.api:rest-interface:1.0'
+    api 'io.apimap.api:rest-interface:2.0-SNAPSHOT'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
+    testImplementation 'org.mockito:mockito-junit-jupiter:4.0.0'
+    testImplementation 'org.mockito:mockito-core:4.0.0'
+
     integrationTestImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
 }
 

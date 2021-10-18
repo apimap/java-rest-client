@@ -22,20 +22,21 @@ package io.apimap.client.client;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.apimap.api.rest.ApiDataRestEntity;
+import io.apimap.api.rest.jsonapi.JsonApiRootObject;
 import io.apimap.client.RestClientConfiguration;
 import io.apimap.client.client.query.ApiQuery;
 import io.apimap.client.client.query.CreateApiQuery;
 import io.apimap.client.exception.ApiRequestFailedException;
 import io.apimap.client.exception.IllegalApiContentException;
 import io.apimap.client.exception.IncorrectTokenException;
-import io.apimap.api.rest.ApiDataRestEntity;
-import io.apimap.api.rest.jsonapi.JsonApiRootObject;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
+import org.apache.http.conn.HttpHostConnectException;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -51,10 +52,17 @@ public class BaseRestClient {
 
     protected RestClientConfiguration configuration;
 
+    protected CloseableHttpClient httpClient;
+
     protected ArrayList<ApiQuery> queries = new ArrayList<>();
 
     public BaseRestClient(RestClientConfiguration configuration) {
         this.configuration = configuration;
+    }
+
+    public BaseRestClient(RestClientConfiguration configuration, CloseableHttpClient httpClient) {
+        this.configuration = configuration;
+        this.httpClient = httpClient;
     }
 
     protected ObjectMapper defaultObjectMapper() {
@@ -62,6 +70,7 @@ public class BaseRestClient {
     }
 
     protected CloseableHttpClient defaultCloseableHttpClient() {
+        if(this.httpClient != null) return this.httpClient;
         return HttpClients.createDefault();
     }
 
@@ -81,7 +90,7 @@ public class BaseRestClient {
                 configuration.getQueryCallstackDepth());
     }
 
-    private URI enumerateQueries(HttpGet request, ArrayList<ApiQuery> remainingQueries, CloseableHttpClient client, int queryCallstackDepth) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException {
+    protected URI enumerateQueries(HttpGet request, ArrayList<ApiQuery> remainingQueries, CloseableHttpClient client, int queryCallstackDepth) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException {
         if(configuration.isDebugMode()){ System.out.println("Enumerating http queries"); }
         if(configuration.isDebugMode()){ System.out.println("Http Client: " + client); }
         if(configuration.isDebugMode()){ System.out.println("Http Request: " + request); }
@@ -172,6 +181,11 @@ public class BaseRestClient {
             }
 
             CloseableHttpResponse response = defaultCloseableHttpClient().execute(deleteRequest);
+
+            if(response.getStatusLine().getStatusCode() < 200 || response.getStatusLine().getStatusCode() > 299){
+                throw new ApiRequestFailedException(response.getEntity().getContent().toString());
+            }
+
             return responsStatusCode(response);
         } catch (Exception e) {
             throw new ApiRequestFailedException(e);
@@ -202,14 +216,17 @@ public class BaseRestClient {
 
             CloseableHttpResponse response = defaultCloseableHttpClient().execute(putRequest);
 
+            if(response.getStatusLine().getStatusCode() < 200 || response.getStatusLine().getStatusCode() > 299){
+                throw new ApiRequestFailedException(response.getEntity().getContent().toString());
+            }
+
             return responseResourceObject(response, resourceClassType);
         } catch (Exception e) {
             throw new ApiRequestFailedException(e);
         }
     }
 
-    public <T> T postResource(HttpPost postRequest, Object content, Class<T> resourceClassType) throws IllegalApiContentException, IncorrectTokenException {
-
+    protected <T> T postResource(HttpPost postRequest, Object content, Class<T> resourceClassType) throws IllegalApiContentException, IncorrectTokenException, HttpHostConnectException, ApiRequestFailedException {
         try {
             HttpEntity entity = new StringEntity(
                     defaultObjectMapper().writeValueAsString(content),
@@ -223,16 +240,26 @@ public class BaseRestClient {
 
             CloseableHttpResponse response = defaultCloseableHttpClient().execute(postRequest);
 
+
+            if(response.getStatusLine().getStatusCode() >= 400 && response.getStatusLine().getStatusCode() < 500){
+                throw new IllegalApiContentException(response.getEntity().getContent().toString());
+            }
+
+            if(response.getStatusLine().getStatusCode() >= 500 && response.getStatusLine().getStatusCode() < 600){
+                throw new ApiRequestFailedException(response.getEntity().getContent().toString());
+            }
+
             return responseResourceObject(response, resourceClassType);
+        } catch (HttpHostConnectException | IllegalApiContentException | ApiRequestFailedException e) {
+            throw e;
         } catch (Exception e) {
             throw new IllegalApiContentException(e);
         }
     }
 
     protected int responsStatusCode(CloseableHttpResponse reponse) throws IOException, IncorrectTokenException {
-
         if(reponse.getStatusLine().getStatusCode() == 401){
-            throw new IncorrectTokenException();
+            throw new IncorrectTokenException("Missing API token");
         }
 
         int returnValue = -1;
@@ -248,7 +275,7 @@ public class BaseRestClient {
 
     protected <T> T responseResourceObject(CloseableHttpResponse reponse, Class<T> resourceClassType) throws IOException, IncorrectTokenException {
         if(reponse.getStatusLine().getStatusCode() == 401){
-            throw new IncorrectTokenException();
+            throw new IncorrectTokenException("Missing API token");
         }
 
         ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -266,7 +293,7 @@ public class BaseRestClient {
         return returnValue;
     }
 
-    private String defaultAuthorizationHeaderValue(){
+    protected String defaultAuthorizationHeaderValue(){
         return "Bearer " + this.configuration.getToken();
     }
 

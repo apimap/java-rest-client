@@ -24,6 +24,10 @@ public class IncorrectTokenException extends Throwable {
         super(cause);
     }
 
+    public IncorrectTokenException(String message) {
+        super(message);
+    }
+
     public IncorrectTokenException() {
         super();
     }

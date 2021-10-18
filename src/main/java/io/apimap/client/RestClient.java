@@ -47,6 +47,15 @@ public class RestClient extends BaseRestClient {
         return new RestClient(configuration);
     }
 
+    public RestClient(RestClientConfiguration configuration, CloseableHttpClient httpClient) {
+        super(configuration, httpClient);
+    }
+
+    public RestClient(RestClientConfiguration configuration, CloseableHttpClient httpClient, Consumer<String> errorHandler) {
+        super(configuration, httpClient);
+        this.errorHandler = errorHandler;
+    }
+
     public RestClient withErrorHandler(Consumer<String> handler){
         this.errorHandler = handler;
         return this;
@@ -101,7 +110,9 @@ public class RestClient extends BaseRestClient {
             try {
                 return resourceClassType.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
-                e.printStackTrace();
+                if(this.errorHandler != null){
+                    this.errorHandler.accept(e.getMessage());
+                }
                 return null;
             }
         }
@@ -129,7 +140,9 @@ public class RestClient extends BaseRestClient {
             try {
                 return resourceClassType.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
-                e.printStackTrace();
+                if(this.errorHandler != null){
+                    this.errorHandler.accept(e.getMessage());
+                }
                 return null;
             }
         }
@@ -157,7 +170,9 @@ public class RestClient extends BaseRestClient {
             try {
                 return resourceClassType.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
-                e.printStackTrace();
+                if(this.errorHandler != null){
+                    this.errorHandler.accept(e.getMessage());
+                }
                 return null;
             }
         }

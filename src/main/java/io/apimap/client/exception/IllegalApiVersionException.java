@@ -24,6 +24,10 @@ public class IllegalApiVersionException extends Exception {
         super(cause);
     }
 
+    public IllegalApiVersionException(String message) {
+        super(message);
+    }
+
     public IllegalApiVersionException() {
         super();
     }

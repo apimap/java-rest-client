@@ -24,6 +24,10 @@ public class ApiRequestFailedException extends Exception {
         super(cause);
     }
 
+    public ApiRequestFailedException(String message) {
+        super(message);
+    }
+
     public ApiRequestFailedException() {
         super();
     }

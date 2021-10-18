@@ -24,6 +24,10 @@ public class IllegalApiContentException extends Exception {
         super(cause);
     }
 
+    public IllegalApiContentException(String message) {
+        super(message);
+    }
+
     public IllegalApiContentException() {
         super();
     }
