@@ -188,7 +188,7 @@ public class BaseRestClient {
 
             return responsStatusCode(response);
         } catch (Exception e) {
-            throw new ApiRequestFailedException(e);
+            throw new ApiRequestFailedException(e.getMessage());
         }
     }
 
@@ -197,7 +197,7 @@ public class BaseRestClient {
             CloseableHttpResponse response = defaultCloseableHttpClient().execute(getRequest);
             return responseResourceObject(response, resourceClassType);
         } catch (Exception e) {
-            throw new ApiRequestFailedException(e);
+            throw new ApiRequestFailedException(e.getMessage());
         }
     }
 
@@ -222,7 +222,7 @@ public class BaseRestClient {
 
             return responseResourceObject(response, resourceClassType);
         } catch (Exception e) {
-            throw new ApiRequestFailedException(e);
+            throw new ApiRequestFailedException(e.getMessage());
         }
     }
 
@@ -253,7 +253,7 @@ public class BaseRestClient {
         } catch (HttpHostConnectException | IllegalApiContentException | ApiRequestFailedException e) {
             throw e;
         } catch (Exception e) {
-            throw new IllegalApiContentException(e);
+            throw new IllegalApiContentException(e.getMessage());
         }
     }
 
