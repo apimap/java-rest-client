@@ -1,13 +1,10 @@
 import io.apimap.api.rest.ApiDataRestEntity;
 import io.apimap.client.RestClient;
 import io.apimap.client.RestClientConfiguration;
-import io.apimap.client.exception.ApiRequestFailedException;
-import io.apimap.client.exception.IllegalApiContentException;
 import io.apimap.client.exception.IncorrectTokenException;
 import org.apache.http.HttpEntity;
 import org.apache.http.StatusLine;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +12,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.function.Consumer;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;

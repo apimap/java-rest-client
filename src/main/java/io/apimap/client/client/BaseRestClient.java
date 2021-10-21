@@ -41,6 +41,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -183,7 +184,11 @@ public class BaseRestClient {
             CloseableHttpResponse response = defaultCloseableHttpClient().execute(deleteRequest);
 
             if(response.getStatusLine().getStatusCode() < 200 || response.getStatusLine().getStatusCode() > 299){
-                throw new ApiRequestFailedException(response.getEntity().getContent().toString());
+                throw new ApiRequestFailedException(String.format(
+                        "Status Code: %i, Content: %s",
+                        response.getStatusLine().getStatusCode(),
+                        EntityUtils.toString(response.getEntity(), "UTF-8")
+                ));
             }
 
             return responsStatusCode(response);
@@ -223,7 +228,11 @@ public class BaseRestClient {
             CloseableHttpResponse response = defaultCloseableHttpClient().execute(putRequest);
 
             if(response.getStatusLine().getStatusCode() < 200 || response.getStatusLine().getStatusCode() > 299){
-                throw new ApiRequestFailedException(response.getEntity().getContent().toString());
+                throw new ApiRequestFailedException(String.format(
+                        "Status Code: %i, Content: %s",
+                        response.getStatusLine().getStatusCode(),
+                        EntityUtils.toString(response.getEntity(), "UTF-8")
+                ));
             }
 
             return responseResourceObject(response, resourceClassType);
@@ -251,11 +260,19 @@ public class BaseRestClient {
 
 
             if(response.getStatusLine().getStatusCode() >= 400 && response.getStatusLine().getStatusCode() < 500){
-                throw new IllegalApiContentException(response.getEntity().getContent().toString());
+                throw new IllegalApiContentException(String.format(
+                        "Status Code: %i, Content: %s",
+                        response.getStatusLine().getStatusCode(),
+                        EntityUtils.toString(response.getEntity(), "UTF-8")
+                ));
             }
 
             if(response.getStatusLine().getStatusCode() >= 500 && response.getStatusLine().getStatusCode() < 600){
-                throw new ApiRequestFailedException(response.getEntity().getContent().toString());
+                throw new ApiRequestFailedException(String.format(
+                        "Status Code: %i, Content: %s",
+                        response.getStatusLine().getStatusCode(),
+                        EntityUtils.toString(response.getEntity(), "UTF-8")
+                ));
             }
 
             return responseResourceObject(response, resourceClassType);

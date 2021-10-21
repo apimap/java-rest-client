@@ -35,6 +35,10 @@ public class RestClientConfiguration implements Serializable {
     public RestClientConfiguration() {
     }
 
+    public RestClientConfiguration(String serviceRootEndpointUrl) {
+        this.serviceRootEndpointUrl = serviceRootEndpointUrl;
+    }
+
     public RestClientConfiguration(String token, String serviceRootEndpointUrl) {
         this.token = token;
         this.serviceRootEndpointUrl = serviceRootEndpointUrl;

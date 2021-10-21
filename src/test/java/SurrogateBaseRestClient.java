@@ -1,26 +1,17 @@
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.apimap.api.rest.ApiDataRestEntity;
-import io.apimap.api.rest.jsonapi.JsonApiRootObject;
 import io.apimap.client.RestClientConfiguration;
 import io.apimap.client.client.BaseRestClient;
 import io.apimap.client.client.query.ApiQuery;
-import io.apimap.client.client.query.CreateApiQuery;
 import io.apimap.client.exception.ApiRequestFailedException;
 import io.apimap.client.exception.IllegalApiContentException;
 import io.apimap.client.exception.IncorrectTokenException;
-import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.conn.HttpHostConnectException;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 
 import java.io.IOException;
 import java.net.URI;
