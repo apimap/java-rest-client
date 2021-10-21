@@ -24,10 +24,10 @@ public class BaseRestClientTest {
         RestClientConfiguration configuration = new RestClientConfiguration();
         SurrogateBaseRestClient client = new SurrogateBaseRestClient(configuration);
 
-        assertThrows(ApiRequestFailedException.class,
+        assertThrows(HttpHostConnectException.class,
                 ()->{
                     ApiDataRestEntity object = new ApiDataRestEntity();
-                    client.postResource(new HttpPost(new java.net.URI("http://localhost:8080")), object, ApiDataRestEntity.class);
+                    client.postResource(new HttpPost(new java.net.URI("http://localhost:1")), object, ApiDataRestEntity.class);
                 });
     }
 

@@ -72,7 +72,7 @@ public class BaseRestClient {
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 .enable(MapperFeature.USE_BASE_TYPE_AS_DEFAULT_IMPL);
     }
-    
+
     protected CloseableHttpClient defaultCloseableHttpClient() {
         if(this.httpClient != null) return this.httpClient;
         return HttpClients.createDefault();
