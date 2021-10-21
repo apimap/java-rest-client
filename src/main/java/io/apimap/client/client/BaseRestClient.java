@@ -21,6 +21,7 @@ package io.apimap.client.client;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.apimap.api.rest.ApiDataRestEntity;
 import io.apimap.api.rest.jsonapi.JsonApiRootObject;
@@ -67,9 +68,11 @@ public class BaseRestClient {
     }
 
     protected ObjectMapper defaultObjectMapper() {
-        return new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        return new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                .enable(MapperFeature.USE_BASE_TYPE_AS_DEFAULT_IMPL);
     }
-
+    
     protected CloseableHttpClient defaultCloseableHttpClient() {
         if(this.httpClient != null) return this.httpClient;
         return HttpClients.createDefault();
@@ -258,7 +261,6 @@ public class BaseRestClient {
 
             CloseableHttpResponse response = defaultCloseableHttpClient().execute(postRequest);
 
-
             if(response.getStatusLine().getStatusCode() >= 400 && response.getStatusLine().getStatusCode() < 500){
                 throw new IllegalApiContentException(String.format(
                         "Status Code: %i, Content: %s",
@@ -307,13 +309,11 @@ public class BaseRestClient {
             throw new IncorrectTokenException("Missing API token");
         }
 
-        ObjectMapper mapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
         T returnValue = null;
 
         try {
-            JavaType type = mapper.getTypeFactory().constructParametricType(JsonApiRootObject.class, resourceClassType);
-            JsonApiRootObject<T> element = mapper.readValue(reponse.getEntity().getContent(), type);
+            JavaType type = defaultObjectMapper().getTypeFactory().constructParametricType(JsonApiRootObject.class, resourceClassType);
+            JsonApiRootObject<T> element = defaultObjectMapper().readValue(reponse.getEntity().getContent(), type);
             returnValue = element.getData();
         } finally {
             reponse.close();
