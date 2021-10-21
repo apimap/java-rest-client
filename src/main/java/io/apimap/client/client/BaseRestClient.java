@@ -282,7 +282,7 @@ public class BaseRestClient {
             if(this.configuration.isDebugMode()){
                 System.out.println(e.getStackTrace());
             }
-            throw new IllegalApiContentException(e.getMessage());
+            throw new ApiRequestFailedException(e.getMessage());
         }
     }
 

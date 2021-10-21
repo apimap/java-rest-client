@@ -24,7 +24,7 @@ public class BaseRestClientTest {
         RestClientConfiguration configuration = new RestClientConfiguration();
         SurrogateBaseRestClient client = new SurrogateBaseRestClient(configuration);
 
-        assertThrows(HttpHostConnectException.class,
+        assertThrows(ApiRequestFailedException.class,
                 ()->{
                     ApiDataRestEntity object = new ApiDataRestEntity();
                     client.postResource(new HttpPost(new java.net.URI("http://localhost:8080")), object, ApiDataRestEntity.class);
@@ -78,7 +78,7 @@ public class BaseRestClientTest {
 
         SurrogateBaseRestClient client = new SurrogateBaseRestClient(configuration, httpClient);
 
-        assertThrows(IllegalApiContentException.class,
+        assertThrows(ApiRequestFailedException.class,
                 ()->{
                     ApiDataRestEntity object = new ApiDataRestEntity();
                     client.postResource(new HttpPost(new java.net.URI("http://localhost:8080")), object, ApiDataRestEntity.class);
