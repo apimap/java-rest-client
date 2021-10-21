@@ -70,8 +70,7 @@ public class BaseRestClient {
     protected ObjectMapper defaultObjectMapper() {
         return new ObjectMapper()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
-                .enable(MapperFeature.USE_BASE_TYPE_AS_DEFAULT_IMPL);
+                .configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
     }
 
     protected CloseableHttpClient defaultCloseableHttpClient() {
