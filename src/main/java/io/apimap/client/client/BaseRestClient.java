@@ -188,6 +188,9 @@ public class BaseRestClient {
 
             return responsStatusCode(response);
         } catch (Exception e) {
+            if(this.configuration.isDebugMode()){
+                System.out.println(e.getStackTrace());
+            }
             throw new ApiRequestFailedException(e.getMessage());
         }
     }
@@ -197,6 +200,9 @@ public class BaseRestClient {
             CloseableHttpResponse response = defaultCloseableHttpClient().execute(getRequest);
             return responseResourceObject(response, resourceClassType);
         } catch (Exception e) {
+            if(this.configuration.isDebugMode()){
+                System.out.println(e.getStackTrace());
+            }
             throw new ApiRequestFailedException(e.getMessage());
         }
     }
@@ -222,6 +228,9 @@ public class BaseRestClient {
 
             return responseResourceObject(response, resourceClassType);
         } catch (Exception e) {
+            if(this.configuration.isDebugMode()){
+                System.out.println(e.getStackTrace());
+            }
             throw new ApiRequestFailedException(e.getMessage());
         }
     }
@@ -253,6 +262,9 @@ public class BaseRestClient {
         } catch (HttpHostConnectException | IllegalApiContentException | ApiRequestFailedException e) {
             throw e;
         } catch (Exception e) {
+            if(this.configuration.isDebugMode()){
+                System.out.println(e.getStackTrace());
+            }
             throw new IllegalApiContentException(e.getMessage());
         }
     }
