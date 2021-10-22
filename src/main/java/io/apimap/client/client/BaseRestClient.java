@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.apimap.api.rest.ApiDataRestEntity;
 import io.apimap.api.rest.jsonapi.JsonApiRootObject;
+import io.apimap.api.rest.jsonapi.IgnoranceIntrospector;
 import io.apimap.client.RestClientConfiguration;
 import io.apimap.client.client.query.ApiQuery;
 import io.apimap.client.client.query.CreateApiQuery;
@@ -70,7 +71,8 @@ public class BaseRestClient {
     protected ObjectMapper defaultObjectMapper() {
         return new ObjectMapper()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
+                .configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true)
+                .setAnnotationIntrospector(new IgnoranceIntrospector());
     }
 
     protected CloseableHttpClient defaultCloseableHttpClient() {
