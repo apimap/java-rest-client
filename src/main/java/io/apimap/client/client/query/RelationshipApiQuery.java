@@ -20,6 +20,8 @@ under the License.
 package io.apimap.client.client.query;
 
 
+import io.apimap.api.rest.DataRestEntity;
+import io.apimap.api.rest.jsonapi.JsonApiRelationships;
 import io.apimap.api.rest.jsonapi.JsonApiRootObject;
 
 import java.net.URI;
@@ -55,6 +57,13 @@ public class RelationshipApiQuery extends ApiQuery {
             }
         }
 
+        return null;
+    }
+
+    public String urlFromEntity(JsonApiRelationships content) {
+        if (content.getRelationships().get(key) != null) {
+            return (String) content.getRelationships().get(key).getLinks().get("self");
+        }
         return null;
     }
 

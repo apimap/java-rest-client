@@ -29,6 +29,7 @@ import io.apimap.api.rest.jsonapi.IgnoranceIntrospector;
 import io.apimap.client.RestClientConfiguration;
 import io.apimap.client.client.query.ApiQuery;
 import io.apimap.client.client.query.CreateApiQuery;
+import io.apimap.client.client.query.RelationshipApiQuery;
 import io.apimap.client.exception.ApiRequestFailedException;
 import io.apimap.client.exception.IllegalApiContentException;
 import io.apimap.client.exception.IncorrectTokenException;
@@ -46,8 +47,11 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 public class BaseRestClient {
     private static final int ABSOLUTE_MAX_CALLSTACK_DEPTH = 20;
@@ -157,14 +161,26 @@ public class BaseRestClient {
                     if(configuration.isDebugMode()){ System.out.println("New resource created, no callback found"); }
                 }
 
-                url = request.getURI().toString();
+                // Check if next query is a relationship query that works on the content received
+                if(remainingQueries.size() > 2 && remainingQueries.get(2).getType() == ApiQuery.TYPE.RELATIONSHIP) {
+                    url = ((RelationshipApiQuery) remainingQueries.get(2)).urlFromEntity(((ApiDataRestEntity) content).getRelationships());
 
-                return enumerateQueries(
-                        new HttpGet(url),
-                        remainingQueries,
-                        client,
-                        --queryCallstackDepth
-                );
+                    return enumerateQueries(
+                            new HttpGet(url),
+                            new ArrayList<ApiQuery>(remainingQueries.subList(2, remainingQueries.size())),
+                            client,
+                            --queryCallstackDepth
+                    );
+                } else {
+                    url = request.getURI().toString();
+
+                    return enumerateQueries(
+                            new HttpGet(url),
+                            remainingQueries,
+                            client,
+                            --queryCallstackDepth
+                    );
+                }
             }
         }
 
