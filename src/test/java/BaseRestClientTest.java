@@ -78,7 +78,7 @@ public class BaseRestClientTest {
 
         SurrogateBaseRestClient client = new SurrogateBaseRestClient(configuration, httpClient);
 
-        assertThrows(ApiRequestFailedException.class,
+        assertThrows(IllegalApiContentException.class,
                 ()->{
                     ApiDataRestEntity object = new ApiDataRestEntity();
                     client.postResource(new HttpPost(new java.net.URI("http://localhost:8080")), object, ApiDataRestEntity.class);

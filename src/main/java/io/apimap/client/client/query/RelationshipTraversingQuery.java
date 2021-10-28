@@ -20,20 +20,18 @@ under the License.
 package io.apimap.client.client.query;
 
 
-import io.apimap.api.rest.DataRestEntity;
 import io.apimap.api.rest.jsonapi.JsonApiRelationships;
-import io.apimap.api.rest.jsonapi.JsonApiRootObject;
+import io.apimap.api.rest.jsonapi.JsonApiRestResponseWrapper;
 
-import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public class RelationshipApiQuery extends ApiQuery {
+public class RelationshipTraversingQuery extends ApiQuery {
 
     protected String relationshipId;
 
-    public RelationshipApiQuery(String key, String relationshipId) {
-        super(TYPE.RELATIONSHIP, key);
+    public RelationshipTraversingQuery(String key, String relationshipId) {
+        super(TYPE.RELATIONSHIP_TRAVERSING, key);
         this.relationshipId = relationshipId;
     }
 
@@ -42,14 +40,19 @@ public class RelationshipApiQuery extends ApiQuery {
     }
 
     @Override
-    public String urlFromContent(JsonApiRootObject content) {
+    public String urlFromContent(JsonApiRestResponseWrapper content) {
+        if(content == null) return null;
 
         List<LinkedHashMap<String, Object>> elements = (List<LinkedHashMap<String, Object>>) content.getData();
+        if(elements == null) return null;
 
         for (LinkedHashMap<String, Object> ele : elements) {
-            if (ele.get("id").equals(relationshipId)) {
+            if (ele != null
+                    && ele.get("id") != null
+                    && ele.get("id").equals(relationshipId)) {
 
                 LinkedHashMap value = (LinkedHashMap) ele.get("relationships");
+                if(value == null) return null;
 
                 if (value.get(key) != null) {
                     return (String) ((LinkedHashMap) ((LinkedHashMap) value.get(key)).get("links")).get("self");
@@ -61,14 +64,12 @@ public class RelationshipApiQuery extends ApiQuery {
     }
 
     public String urlFromEntity(JsonApiRelationships content) {
-        if (content.getRelationships().get(key) != null) {
+        if(content == null) return null;
+
+        if (content.getRelationships() != null
+                && content.getRelationships().get(key) != null) {
             return (String) content.getRelationships().get(key).getLinks().get("self");
         }
-        return null;
-    }
-
-    @Override
-    public String urlFromAction(URI uri) {
         return null;
     }
 

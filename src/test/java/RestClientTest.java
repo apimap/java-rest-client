@@ -69,7 +69,7 @@ public class RestClientTest {
         RestClient client = new RestClient(configuration, httpClient, errorHandler);
 
         ApiDataRestEntity object = new ApiDataRestEntity();
-        client.createResource(object, ApiDataRestEntity.class);
+        client.createResource(object);
 
         verify(errorHandler, times(1)).accept(any());
     }

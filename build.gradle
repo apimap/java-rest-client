@@ -50,6 +50,8 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:4.0.0'
 
     integrationTestImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
+    integrationTestImplementation 'org.mockito:mockito-junit-jupiter:4.0.0'
+    integrationTestImplementation 'org.mockito:mockito-core:4.0.0'
 }
 
 publishing {

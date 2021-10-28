@@ -21,15 +21,14 @@ package io.apimap.client.client;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.apimap.api.rest.ApiDataRestEntity;
-import io.apimap.api.rest.jsonapi.JsonApiRootObject;
-import io.apimap.api.rest.jsonapi.IgnoranceIntrospector;
+import io.apimap.api.rest.jsonapi.JsonApiRestRequestWrapper;
+import io.apimap.api.rest.jsonapi.JsonApiRestResponseWrapper;
 import io.apimap.client.RestClientConfiguration;
 import io.apimap.client.client.query.ApiQuery;
-import io.apimap.client.client.query.CreateApiQuery;
-import io.apimap.client.client.query.RelationshipApiQuery;
+import io.apimap.client.client.query.CreateResourceQuery;
+import io.apimap.client.client.query.RelationshipTraversingQuery;
 import io.apimap.client.exception.ApiRequestFailedException;
 import io.apimap.client.exception.IllegalApiContentException;
 import io.apimap.client.exception.IncorrectTokenException;
@@ -47,11 +46,8 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
 
 public class BaseRestClient {
     private static final int ABSOLUTE_MAX_CALLSTACK_DEPTH = 20;
@@ -75,8 +71,7 @@ public class BaseRestClient {
     protected ObjectMapper defaultObjectMapper() {
         return new ObjectMapper()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
-                .configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true)
-                .setAnnotationIntrospector(new IgnoranceIntrospector());
+                .configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
     }
 
     protected CloseableHttpClient defaultCloseableHttpClient() {
@@ -119,7 +114,7 @@ public class BaseRestClient {
         ApiQuery query = remainingQueries.get(0);
         if(configuration.isDebugMode()){ System.out.println("Running query " + query.getType()); }
 
-        if (query.getType() == ApiQuery.TYPE.CREATE) {
+        if (query.getType() == ApiQuery.TYPE.CREATE_RESOURCE) {
             return enumerateQueries(
                     request,
                     new ArrayList<ApiQuery>(remainingQueries.subList(1, remainingQueries.size())),
@@ -128,17 +123,21 @@ public class BaseRestClient {
             );
         }
 
+/*
+        JavaType type = objectMapper.getTypeFactory().constructParametricType(JsonApiRootObject.class, ApiDataRestEntity.class);
+        JsonApiRootObject<ApiDataRestEntity> output = objectMapper.readValue(input, type);
+        */
         CloseableHttpResponse response = client.execute(request);
-        JsonApiRootObject element = defaultObjectMapper().readValue(response.getEntity().getContent(), JsonApiRootObject.class);
+        JsonApiRestResponseWrapper element = defaultObjectMapper().readValue(response.getEntity().getContent(), JsonApiRestResponseWrapper.class);
 
         String url = query.urlFromContent(element);
 
         // Check if next query is a create query and current request failed
         if (remainingQueries.size() > 1 && url == null) {
-            if (remainingQueries.get(1).getType() == ApiQuery.TYPE.CREATE) {
+            if (remainingQueries.get(1).getType() == ApiQuery.TYPE.CREATE_RESOURCE) {
                 HttpPost postRequest = new HttpPost(request.getURI());
 
-                CreateApiQuery createQuery = (CreateApiQuery) remainingQueries.get(1);
+                CreateResourceQuery createQuery = (CreateResourceQuery) remainingQueries.get(1);
                 Object content = postResource(postRequest, createQuery.getObject(), createQuery.getResourceClassType());
 
                 if (content == null) {
@@ -162,12 +161,12 @@ public class BaseRestClient {
                 }
 
                 // Check if next query is a relationship query that works on the content received
-                if(remainingQueries.size() > 2 && remainingQueries.get(2).getType() == ApiQuery.TYPE.RELATIONSHIP) {
-                    url = ((RelationshipApiQuery) remainingQueries.get(2)).urlFromEntity(((ApiDataRestEntity) content).getRelationships());
+                if(remainingQueries.size() > 1 && remainingQueries.get(0).getType() == ApiQuery.TYPE.RELATIONSHIP_TRAVERSING) {
+                    url = ((RelationshipTraversingQuery) remainingQueries.get(0)).urlFromEntity(((ApiDataRestEntity) content).getRelationships());
 
                     return enumerateQueries(
                             new HttpGet(url),
-                            new ArrayList<ApiQuery>(remainingQueries.subList(2, remainingQueries.size())),
+                            new ArrayList<ApiQuery>(remainingQueries.subList(1, remainingQueries.size())),
                             client,
                             --queryCallstackDepth
                     );
@@ -206,7 +205,7 @@ public class BaseRestClient {
 
             if(response.getStatusLine().getStatusCode() < 200 || response.getStatusLine().getStatusCode() > 299){
                 throw new ApiRequestFailedException(String.format(
-                        "Status Code: %i, Content: %s",
+                        "Status Code: %s, Content: %s",
                         response.getStatusLine().getStatusCode(),
                         EntityUtils.toString(response.getEntity(), "UTF-8")
                 ));
@@ -236,7 +235,7 @@ public class BaseRestClient {
     protected <T> T putResource(HttpPut putRequest, Object content, Class<T> resourceClassType) throws ApiRequestFailedException, IncorrectTokenException {
         try {
             HttpEntity entity = new StringEntity(
-                    defaultObjectMapper().writeValueAsString(content),
+                    defaultObjectMapper().writeValueAsString(new JsonApiRestRequestWrapper<>(content)),
                     ContentType.create("application/json")
             );
 
@@ -250,7 +249,7 @@ public class BaseRestClient {
 
             if(response.getStatusLine().getStatusCode() < 200 || response.getStatusLine().getStatusCode() > 299){
                 throw new ApiRequestFailedException(String.format(
-                        "Status Code: %i, Content: %s",
+                        "Status Code: %s, Content: %s",
                         response.getStatusLine().getStatusCode(),
                         EntityUtils.toString(response.getEntity(), "UTF-8")
                 ));
@@ -268,7 +267,7 @@ public class BaseRestClient {
     protected <T> T postResource(HttpPost postRequest, Object content, Class<T> resourceClassType) throws IllegalApiContentException, IncorrectTokenException, HttpHostConnectException, ApiRequestFailedException {
         try {
             HttpEntity entity = new StringEntity(
-                    defaultObjectMapper().writeValueAsString(content),
+                    defaultObjectMapper().writeValueAsString(new JsonApiRestRequestWrapper<>(content)),
                     ContentType.create("application/json"));
 
             postRequest.setEntity(entity);
@@ -281,7 +280,7 @@ public class BaseRestClient {
 
             if(response.getStatusLine().getStatusCode() >= 400 && response.getStatusLine().getStatusCode() < 500){
                 throw new IllegalApiContentException(String.format(
-                        "Status Code: %i, Content: %s",
+                        "Status Code: %s, Content: %s",
                         response.getStatusLine().getStatusCode(),
                         EntityUtils.toString(response.getEntity(), "UTF-8")
                 ));
@@ -289,7 +288,7 @@ public class BaseRestClient {
 
             if(response.getStatusLine().getStatusCode() >= 500 && response.getStatusLine().getStatusCode() < 600){
                 throw new ApiRequestFailedException(String.format(
-                        "Status Code: %i, Content: %s",
+                        "Status Code: %s, Content: %s",
                         response.getStatusLine().getStatusCode(),
                         EntityUtils.toString(response.getEntity(), "UTF-8")
                 ));
@@ -330,8 +329,8 @@ public class BaseRestClient {
         T returnValue = null;
 
         try {
-            JavaType type = defaultObjectMapper().getTypeFactory().constructParametricType(JsonApiRootObject.class, resourceClassType);
-            JsonApiRootObject<T> element = defaultObjectMapper().readValue(reponse.getEntity().getContent(), type);
+            JavaType type = defaultObjectMapper().getTypeFactory().constructParametricType(JsonApiRestResponseWrapper.class, resourceClassType);
+            JsonApiRestResponseWrapper<T> element = defaultObjectMapper().readValue(reponse.getEntity().getContent(), type);
             returnValue = element.getData();
         } finally {
             reponse.close();

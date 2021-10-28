@@ -20,10 +20,10 @@ under the License.
 package io.apimap.client;
 
 import io.apimap.client.client.BaseRestClient;
-import io.apimap.client.client.query.CollectionApiQuery;
-import io.apimap.client.client.query.CreateApiQuery;
-import io.apimap.client.client.query.RelationshipApiQuery;
-import io.apimap.client.client.query.ResourceApiQuery;
+import io.apimap.client.client.query.CollectionTraversingQuery;
+import io.apimap.client.client.query.CreateResourceQuery;
+import io.apimap.client.client.query.RelationshipTraversingQuery;
+import io.apimap.client.client.query.ResourceTraversingQuery;
 import io.apimap.client.exception.IncorrectTokenException;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
@@ -35,16 +35,12 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.function.Consumer;
 
-public class RestClient extends BaseRestClient {
+public class RestClient extends BaseRestClient implements IRestClient {
 
     protected Consumer<String> errorHandler;
 
     public RestClient(RestClientConfiguration configuration) {
         super(configuration);
-    }
-
-    public static RestClient withConfiguration(RestClientConfiguration configuration) {
-        return new RestClient(configuration);
     }
 
     public RestClient(RestClientConfiguration configuration, CloseableHttpClient httpClient) {
@@ -62,22 +58,22 @@ public class RestClient extends BaseRestClient {
     }
 
     public RestClient followCollection(String relationshipId, String key) {
-        addApiQuery(new RelationshipApiQuery(key, relationshipId));
+        addApiQuery(new RelationshipTraversingQuery(key, relationshipId));
         return this;
     }
 
     public RestClient followResource(String key) {
-        addApiQuery(new ResourceApiQuery(key));
+        addApiQuery(new ResourceTraversingQuery(key));
         return this;
     }
 
-    public RestClient onMissingCreate(String key, Object object, Consumer<Object> callback, Class resourceClassType) {
-        addApiQuery(new CreateApiQuery(key, object, callback, resourceClassType));
+    public RestClient onMissingCreate(String key, Object object, Consumer<Object> callback) {
+        addApiQuery(new CreateResourceQuery(key, object, callback));
         return this;
     }
 
     public RestClient followCollection(String key) {
-        addApiQuery(new CollectionApiQuery(key));
+        addApiQuery(new CollectionTraversingQuery(key));
         return this;
     }
 
@@ -135,10 +131,10 @@ public class RestClient extends BaseRestClient {
         return returnValue;
     }
 
-    public <T> T createResource(Object object, Class<T> resourceClassType) throws IOException, IncorrectTokenException {
+    public <T> T createResource(T object) throws IOException, IncorrectTokenException {
         if(configuration.isDryRunMode()) {
             try {
-                return resourceClassType.getDeclaredConstructor().newInstance();
+                return (T) object.getClass().getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 if(this.errorHandler != null){
                     this.errorHandler.accept(e.getMessage());
@@ -153,7 +149,7 @@ public class RestClient extends BaseRestClient {
 
         try {
             URI contentURI = performQueries(httpClient);
-            returnValue = postResource(new HttpPost(contentURI), object, resourceClassType);
+            returnValue = (T) postResource(new HttpPost(contentURI), object, object.getClass());
         } catch (Exception e) {
             if(this.errorHandler != null){
                 this.errorHandler.accept(e.getMessage());
@@ -165,10 +161,10 @@ public class RestClient extends BaseRestClient {
         return returnValue;
     }
 
-    public <T> T createOrUpdateResource(Object object, Class<T> resourceClassType) throws IOException, IncorrectTokenException {
+    public <T> T createOrUpdateResource(T object) throws IOException, IncorrectTokenException {
         if(configuration.isDryRunMode()) {
             try {
-                return resourceClassType.getDeclaredConstructor().newInstance();
+                return (T) object.getClass().getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 if(this.errorHandler != null){
                     this.errorHandler.accept(e.getMessage());
@@ -183,7 +179,7 @@ public class RestClient extends BaseRestClient {
 
         try {
             URI contentURI = performQueries(httpClient);
-            returnValue = putResource(new HttpPut(contentURI), object, resourceClassType);
+            returnValue = (T) putResource(new HttpPut(contentURI), object, object.getClass());
         } catch (Exception e) {
             if(this.errorHandler != null){
                 this.errorHandler.accept(e.getMessage());

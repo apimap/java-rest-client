@@ -19,15 +19,22 @@ under the License.
 
 package io.apimap.client.client.query;
 
-import io.apimap.api.rest.jsonapi.JsonApiRootObject;
-
-import java.net.URI;
+import io.apimap.api.rest.jsonapi.JsonApiRestResponseWrapper;
 
 public abstract class ApiQuery {
-    public enum TYPE { CREATE, COLLECTION, RELATIONSHIP, RESOURCE }
+    public enum TYPE {
+        CREATE_RESOURCE,
+        COLLECTION_TRAVERSING,
+        RELATIONSHIP_TRAVERSING,
+        RESOURCE_TRAVERSING
+    }
 
     protected TYPE type;
     protected String key;
+
+    public ApiQuery() {
+    }
+
     public ApiQuery(TYPE type, String key) {
         this.type = type;
         this.key = key;
@@ -41,8 +48,7 @@ public abstract class ApiQuery {
         return key;
     }
 
-    public abstract String urlFromContent(JsonApiRootObject content);
-    public abstract String urlFromAction(URI uri);
+    public abstract String urlFromContent(JsonApiRestResponseWrapper<?> content);
 
     @Override
     public String toString() {

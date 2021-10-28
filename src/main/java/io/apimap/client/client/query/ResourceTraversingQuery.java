@@ -19,43 +19,28 @@ under the License.
 
 package io.apimap.client.client.query;
 
-import io.apimap.api.rest.jsonapi.JsonApiRootObject;
+import io.apimap.api.rest.jsonapi.JsonApiRestResponseWrapper;
 
-import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.function.Consumer;
 
-public class CreateApiQuery extends ApiQuery {
-    protected Object object;
-    protected Consumer<Object> callback;
-    Class resourceClassType;
+public class ResourceTraversingQuery extends ApiQuery {
 
-    public CreateApiQuery(String key, Object object, Consumer<Object> callback, Class resourceClassType) {
-        super(TYPE.CREATE, key);
-        this.object = object;
-        this.callback = callback;
-        this.resourceClassType = resourceClassType;
-    }
-
-    public Object getObject() {
-        return object;
-    }
-
-    public Class getResourceClassType() {
-        return resourceClassType;
-    }
-
-    public Consumer<Object> getCallback() {
-        return callback;
+    public ResourceTraversingQuery(String key) {
+        super(TYPE.RESOURCE_TRAVERSING, key);
     }
 
     @Override
-    public String urlFromContent(JsonApiRootObject content) {
+    public String urlFromContent(JsonApiRestResponseWrapper content) {
+        if(content == null) return null;
+
         List<LinkedHashMap<String, Object>> elements = (List<LinkedHashMap<String, Object>>) content.getData();
+        if(elements == null) return null;
 
         for (LinkedHashMap<String, Object> ele : elements) {
-            if (ele.get("id").equals(key)) {
+            if (ele != null
+                    && ele.get("id") != null
+                    && ele.get("id").equals(key)) {
                 return ((LinkedHashMap<String, String>) ele.get("links")).get("self");
             }
         }
@@ -64,16 +49,8 @@ public class CreateApiQuery extends ApiQuery {
     }
 
     @Override
-    public String urlFromAction(URI uri) {
-        return null;
-    }
-
-    @Override
     public String toString() {
-        return "CreateApiQuery{" +
-                "object=" + object +
-                ", callback=" + callback +
-                ", resourceClassType=" + resourceClassType +
+        return "ResourceApiQuery{" +
                 ", type=" + type +
                 ", key='" + key + '\'' +
                 '}';

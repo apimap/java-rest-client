@@ -19,32 +19,32 @@ under the License.
 
 package io.apimap.client.client.query;
 
-import io.apimap.api.rest.jsonapi.JsonApiRootObject;
+import io.apimap.api.rest.jsonapi.JsonApiRestResponseWrapper;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 
-public class CollectionApiQuery extends ApiQuery {
-    public CollectionApiQuery(String key) {
-        super(TYPE.COLLECTION, key);
+public class CollectionTraversingQuery extends ApiQuery {
+    public CollectionTraversingQuery(String key) {
+        super(TYPE.COLLECTION_TRAVERSING, key);
     }
 
     @Override
-    public String urlFromContent(JsonApiRootObject content) {
-        ArrayList<LinkedHashMap> value = (ArrayList) content.getLinks().get("related");
+    public String urlFromContent(JsonApiRestResponseWrapper<?> content) {
+        if(content.getLinks() == null) return null;
+
+        ArrayList<LinkedHashMap> value = (ArrayList<LinkedHashMap>) content.getLinks().get("related");
+
+        if(value == null) return null;
 
         for (LinkedHashMap ele : value) {
-            if (ele.get("rel").equals(key)) {
+            if (ele != null
+                    && ele.get("rel") != null
+                    && ele.get("rel").equals(key)) {
                 return (String) ele.get("href");
             }
         }
 
-        return null;
-    }
-
-    @Override
-    public String urlFromAction(URI uri) {
         return null;
     }
 
