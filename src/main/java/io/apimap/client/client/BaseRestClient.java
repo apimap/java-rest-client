@@ -123,7 +123,7 @@ public class BaseRestClient {
             );
         }
 
-/*
+        /*
         JavaType type = objectMapper.getTypeFactory().constructParametricType(JsonApiRootObject.class, ApiDataRestEntity.class);
         JsonApiRootObject<ApiDataRestEntity> output = objectMapper.readValue(input, type);
         */

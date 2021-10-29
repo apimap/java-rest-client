@@ -34,6 +34,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import java.io.IOException;
 import java.net.URI;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class RestClient extends BaseRestClient implements IRestClient {
 
@@ -78,7 +79,6 @@ public class RestClient extends BaseRestClient implements IRestClient {
     }
 
     public int deleteResource() throws IOException, IncorrectTokenException {
-
         if(configuration.isDryRunMode()) {
             return 204;
         }

@@ -92,10 +92,11 @@ public class RestClientConfiguration implements Serializable {
     @Override
     public String toString() {
         return "RestClientConfiguration{" +
-                "logger=" + debugMode +
+                "dryRunMode=" + dryRunMode +
+                ", debugMode=" + debugMode +
                 ", token='" + token + '\'' +
-                ", endpoint='" + serviceRootEndpointUrl + '\'' +
-                ", retries=" + queryCallstackDepth +
+                ", serviceRootEndpointUrl='" + serviceRootEndpointUrl + '\'' +
+                ", queryCallstackDepth=" + queryCallstackDepth +
                 '}';
     }
 }
