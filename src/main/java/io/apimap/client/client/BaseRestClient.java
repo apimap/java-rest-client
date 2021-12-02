@@ -196,12 +196,14 @@ public class BaseRestClient {
     }
 
     protected int deleteResource(HttpDelete deleteRequest) throws ApiRequestFailedException, IncorrectTokenException {
+        CloseableHttpResponse response = null;
+
         try {
             if (this.configuration.getToken() != null) {
                 deleteRequest.setHeader("Authorization", defaultAuthorizationHeaderValue());
             }
 
-            CloseableHttpResponse response = defaultCloseableHttpClient().execute(deleteRequest);
+            response = defaultCloseableHttpClient().execute(deleteRequest);
 
             if(response.getStatusLine().getStatusCode() < 200 || response.getStatusLine().getStatusCode() > 299){
                 throw new ApiRequestFailedException(String.format(
@@ -217,22 +219,42 @@ public class BaseRestClient {
                 System.out.println(e.getStackTrace());
             }
             throw new ApiRequestFailedException(e.getMessage());
+        } finally {
+            if(response != null) {
+                try {
+                    response.close();
+                }catch (Exception ignored){
+
+                }
+            }
         }
     }
 
     protected <T> T getResource(HttpGet getRequest, Class<T> resourceClassType) throws ApiRequestFailedException, IncorrectTokenException {
+        CloseableHttpResponse response = null;
+
         try {
-            CloseableHttpResponse response = defaultCloseableHttpClient().execute(getRequest);
+            response = defaultCloseableHttpClient().execute(getRequest);
             return responseResourceObject(response, resourceClassType);
         } catch (Exception e) {
             if(this.configuration.isDebugMode()){
                 System.out.println(e.getStackTrace());
             }
             throw new ApiRequestFailedException(e.getMessage());
+        } finally {
+            if(response != null) {
+                try {
+                    response.close();
+                }catch (Exception ignored){
+
+                }
+            }
         }
     }
 
     protected <T> T putResource(HttpPut putRequest, Object content, Class<T> resourceClassType) throws ApiRequestFailedException, IncorrectTokenException {
+        CloseableHttpResponse response = null;
+
         try {
             HttpEntity entity = new StringEntity(
                     defaultObjectMapper().writeValueAsString(new JsonApiRestRequestWrapper<>(content)),
@@ -245,7 +267,7 @@ public class BaseRestClient {
                 putRequest.setHeader("Authorization", defaultAuthorizationHeaderValue());
             }
 
-            CloseableHttpResponse response = defaultCloseableHttpClient().execute(putRequest);
+            response = defaultCloseableHttpClient().execute(putRequest);
 
             if(response.getStatusLine().getStatusCode() < 200 || response.getStatusLine().getStatusCode() > 299){
                 throw new ApiRequestFailedException(String.format(
@@ -261,10 +283,20 @@ public class BaseRestClient {
                 System.out.println(e.getStackTrace());
             }
             throw new ApiRequestFailedException(e.getMessage());
+        } finally {
+            if(response != null) {
+                try {
+                    response.close();
+                }catch (Exception ignored){
+
+                }
+            }
         }
     }
 
     protected <T> T postResource(HttpPost postRequest, Object content, Class<T> resourceClassType) throws IllegalApiContentException, IncorrectTokenException, HttpHostConnectException, ApiRequestFailedException {
+        CloseableHttpResponse response = null;
+
         try {
             HttpEntity entity = new StringEntity(
                     defaultObjectMapper().writeValueAsString(new JsonApiRestRequestWrapper<>(content)),
@@ -276,7 +308,7 @@ public class BaseRestClient {
                 postRequest.setHeader("Authorization", defaultAuthorizationHeaderValue());
             }
 
-            CloseableHttpResponse response = defaultCloseableHttpClient().execute(postRequest);
+            response = defaultCloseableHttpClient().execute(postRequest);
 
             if(response.getStatusLine().getStatusCode() >= 400 && response.getStatusLine().getStatusCode() < 500){
                 throw new IllegalApiContentException(String.format(
@@ -302,6 +334,14 @@ public class BaseRestClient {
                 System.out.println(e.getStackTrace());
             }
             throw new ApiRequestFailedException(e.getMessage());
+        } finally {
+            if(response != null) {
+                try {
+                    response.close();
+                }catch (Exception ignored){
+
+                }
+            }
         }
     }
 

@@ -14,7 +14,6 @@ to be tied to an API proxy or management solution? The Apimap.io project uploads
 your organizations APIs. We care about the source code, removing the limitation of where the API is hosted and how your
 network is constructed.
 
-
 ## Table of Contents
 
 * [Project Components](#project-components)
