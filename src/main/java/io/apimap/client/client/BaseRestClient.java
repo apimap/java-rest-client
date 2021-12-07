@@ -128,9 +128,17 @@ public class BaseRestClient {
         JsonApiRootObject<ApiDataRestEntity> output = objectMapper.readValue(input, type);
         */
         CloseableHttpResponse response = client.execute(request);
-        JsonApiRestResponseWrapper element = defaultObjectMapper().readValue(response.getEntity().getContent(), JsonApiRestResponseWrapper.class);
+        String url = null;
 
-        String url = query.urlFromContent(element);
+        if(response != null
+                && response.getEntity() != null
+                && response.getStatusLine() != null
+                && (response.getStatusLine().getStatusCode() < 299 && response.getStatusLine().getStatusCode() >= 200)) {
+            JsonApiRestResponseWrapper element = defaultObjectMapper().readValue(response.getEntity().getContent(), JsonApiRestResponseWrapper.class);
+            url = query.urlFromContent(element);
+        }else{
+            if(configuration.isDebugMode()){ System.out.println("CloseableHttpResponse returned unusable response"); }
+        }
 
         // Check if next query is a create query and current request failed
         if (remainingQueries.size() > 1 && url == null) {
@@ -245,9 +253,7 @@ public class BaseRestClient {
             if(response != null) {
                 try {
                     response.close();
-                }catch (Exception ignored){
-
-                }
+                }catch (Exception ignored){}
             }
         }
     }
@@ -345,24 +351,24 @@ public class BaseRestClient {
         }
     }
 
-    protected int responsStatusCode(CloseableHttpResponse reponse) throws IOException, IncorrectTokenException {
-        if(reponse.getStatusLine().getStatusCode() == 401){
+    protected int responsStatusCode(CloseableHttpResponse response) throws IOException, IncorrectTokenException {
+        if(response.getStatusLine().getStatusCode() == 401){
             throw new IncorrectTokenException("Missing API token");
         }
 
         int returnValue = -1;
 
         try {
-            returnValue = reponse.getStatusLine().getStatusCode();
+            returnValue = response.getStatusLine().getStatusCode();
         } finally {
-            reponse.close();
+            response.close();
         }
 
         return returnValue;
     }
 
-    protected <T> T responseResourceObject(CloseableHttpResponse reponse, Class<T> resourceClassType) throws IOException, IncorrectTokenException {
-        if(reponse.getStatusLine().getStatusCode() == 401){
+    protected <T> T responseResourceObject(CloseableHttpResponse response, Class<T> resourceClassType) throws IOException, IncorrectTokenException {
+        if(response.getStatusLine().getStatusCode() == 401){
             throw new IncorrectTokenException("Missing API token");
         }
 
@@ -370,10 +376,10 @@ public class BaseRestClient {
 
         try {
             JavaType type = defaultObjectMapper().getTypeFactory().constructParametricType(JsonApiRestResponseWrapper.class, resourceClassType);
-            JsonApiRestResponseWrapper<T> element = defaultObjectMapper().readValue(reponse.getEntity().getContent(), type);
+            JsonApiRestResponseWrapper<T> element = defaultObjectMapper().readValue(response.getEntity().getContent(), type);
             returnValue = element.getData();
         } finally {
-            reponse.close();
+            response.close();
         }
 
         return returnValue;

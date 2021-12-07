@@ -82,12 +82,12 @@ public class SurrogateBaseRestClient extends BaseRestClient {
         return super.postResource(postRequest, content, resourceClassType);
     }
 
-    public int responsStatusCode(CloseableHttpResponse reponse) throws IOException, IncorrectTokenException {
-        return super.responsStatusCode(reponse);
+    public int responsStatusCode(CloseableHttpResponse response) throws IOException, IncorrectTokenException {
+        return super.responsStatusCode(response);
     }
 
-    public <T> T responseResourceObject(CloseableHttpResponse reponse, Class<T> resourceClassType) throws IOException, IncorrectTokenException {
-        return super.responseResourceObject(reponse, resourceClassType);
+    public <T> T responseResourceObject(CloseableHttpResponse response, Class<T> resourceClassType) throws IOException, IncorrectTokenException {
+        return super.responseResourceObject(response, resourceClassType);
     }
 
     public String defaultAuthorizationHeaderValue(){
