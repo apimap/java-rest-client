@@ -47,6 +47,7 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 public class BaseRestClient {
@@ -137,7 +138,16 @@ public class BaseRestClient {
             JsonApiRestResponseWrapper element = defaultObjectMapper().readValue(response.getEntity().getContent(), JsonApiRestResponseWrapper.class);
             url = query.urlFromContent(element);
         }else{
-            if(configuration.isDebugMode()){ System.out.println("CloseableHttpResponse returned unusable response"); }
+            if (configuration.isDebugMode()) {
+                System.out.println("CloseableHttpResponse returned unusable response");
+
+                if(response != null
+                    && response.getEntity() != null
+                    && response.getEntity().getContent() != null) {
+                    String responseBody = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
+                    System.out.println("Response Body: " + responseBody);
+                }
+            }
         }
 
         // Check if next query is a create query and current request failed
