@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Scanner;
 
 public class BaseRestClient {
     private static final int ABSOLUTE_MAX_CALLSTACK_DEPTH = 20;
@@ -144,8 +145,14 @@ public class BaseRestClient {
                 if(response != null
                     && response.getEntity() != null
                     && response.getEntity().getContent() != null) {
-                    String responseBody = new String(response.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
-                    System.out.println("Response Body: " + responseBody);
+
+                    Scanner sc = new Scanner(response.getEntity().getContent());
+                    StringBuilder responseBody = new StringBuilder();
+                    while(sc.hasNext()){
+                        responseBody.append(sc.nextLine());
+                    }
+
+                    System.out.println("Response Body: " + responseBody.toString());
                 }
             }
         }
