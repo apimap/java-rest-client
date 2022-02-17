@@ -29,5 +29,8 @@ jobs:
           languages: ${{ matrix.language }}
       - name: Build
         run: ./gradlew build
+        env:
+          MULTI_PACKAGES_TOKEN: ${{ secrets.MULTI_PACKAGES_TOKEN }}
+          MULTI_PACKAGES_USER: ${{ secrets.MULTI_PACKAGES_USER }}
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v1
