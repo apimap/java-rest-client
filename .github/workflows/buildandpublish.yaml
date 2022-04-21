@@ -1,4 +1,4 @@
-name: BuildAndPublish
+name: "Build and Publish"
 on:
   push:
     branches:
