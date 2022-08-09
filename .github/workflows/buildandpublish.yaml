@@ -28,11 +28,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MULTI_PACKAGES_TOKEN: ${{ secrets.MULTI_PACKAGES_TOKEN }}
           MULTI_PACKAGES_USER: ${{ secrets.MULTI_PACKAGES_USER }}
-      - name: Read release tag
-        id: read_tag
-        run: echo "::set-output name=release_tag::$(git tag --points-at HEAD 'v[0-9]*' | head -n1)"
-      - name: Publish
-        if: ${{ steps.read_tag.outputs.release_tag != '' }}
-        run: ./gradlew publish
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
