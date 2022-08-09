@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'de.gliderpilot.semantic-release' version '1.4.2'
 }
 
 group 'io.apimap.client'
@@ -20,6 +21,15 @@ sourceSets {
     integrationTest {
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
+    }
+}
+
+semanticRelease {
+    releaseBranches {
+        include 'main'
+    }
+    repo {
+        ghToken = System.getenv('GITHUB_TOKEN')
     }
 }
 
