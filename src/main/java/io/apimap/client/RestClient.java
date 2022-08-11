@@ -25,11 +25,12 @@ import io.apimap.client.client.query.CreateResourceQuery;
 import io.apimap.client.client.query.RelationshipTraversingQuery;
 import io.apimap.client.client.query.ResourceTraversingQuery;
 import io.apimap.client.exception.IncorrectTokenException;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.hc.client5.http.classic.methods.HttpDelete;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpPut;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.core5.http.ContentType;
 
 import java.io.IOException;
 import java.net.URI;
@@ -69,7 +70,7 @@ public class RestClient extends BaseRestClient implements IRestClient {
     }
 
     public RestClient onMissingCreate(String key, Object object, Consumer<Object> callback) {
-        addApiQuery(new CreateResourceQuery(key, object, callback));
+        addApiQuery(new CreateResourceQuery(key, object, callback, ContentType.APPLICATION_JSON));
         return this;
     }
 
@@ -101,7 +102,7 @@ public class RestClient extends BaseRestClient implements IRestClient {
         return returnValue;
     }
 
-    public <T> T getResource(Class<T> resourceClassType) throws IOException, IncorrectTokenException {
+    public <T> T getResource(Class<T> resourceClassType, ContentType contentType) throws IOException, IncorrectTokenException {
         if(configuration.isDryRunMode()) {
             try {
                 return resourceClassType.getDeclaredConstructor().newInstance();
@@ -119,7 +120,7 @@ public class RestClient extends BaseRestClient implements IRestClient {
 
         try {
             URI contentURI = performQueries(httpClient);
-            returnValue = getResource(new HttpGet(contentURI), resourceClassType);
+            returnValue = getResource(new HttpGet(contentURI), resourceClassType, contentType);
         } catch (Exception e) {
             if(this.errorHandler != null){
                 this.errorHandler.accept(e.getMessage());
@@ -131,7 +132,7 @@ public class RestClient extends BaseRestClient implements IRestClient {
         return returnValue;
     }
 
-    public <T> T createResource(T object) throws IOException, IncorrectTokenException {
+    public <T> T createResource(T object, ContentType contentType) throws IOException, IncorrectTokenException {
         if(configuration.isDryRunMode()) {
             try {
                 return (T) object.getClass().getDeclaredConstructor().newInstance();
@@ -149,7 +150,7 @@ public class RestClient extends BaseRestClient implements IRestClient {
 
         try {
             URI contentURI = performQueries(httpClient);
-            returnValue = (T) postResource(new HttpPost(contentURI), object, object.getClass());
+            returnValue = (T) postResource(new HttpPost(contentURI), object, object.getClass(), contentType);
         } catch (Exception e) {
             if(this.errorHandler != null){
                 this.errorHandler.accept(e.getMessage());
@@ -161,7 +162,7 @@ public class RestClient extends BaseRestClient implements IRestClient {
         return returnValue;
     }
 
-    public <T> T createOrUpdateResource(T object) throws IOException, IncorrectTokenException {
+    public <T> T createOrUpdateResource(T object, ContentType contentType) throws IOException, IncorrectTokenException {
         if(configuration.isDryRunMode()) {
             try {
                 return (T) object.getClass().getDeclaredConstructor().newInstance();
@@ -179,7 +180,7 @@ public class RestClient extends BaseRestClient implements IRestClient {
 
         try {
             URI contentURI = performQueries(httpClient);
-            returnValue = (T) putResource(new HttpPut(contentURI), object, object.getClass());
+            returnValue = (T) putResource(new HttpPut(contentURI), object, object.getClass(), contentType);
         } catch (Exception e) {
             if(this.errorHandler != null){
                 this.errorHandler.accept(e.getMessage());

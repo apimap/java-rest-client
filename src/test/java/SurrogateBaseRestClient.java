@@ -24,16 +24,18 @@ import io.apimap.client.client.query.ApiQuery;
 import io.apimap.client.exception.ApiRequestFailedException;
 import io.apimap.client.exception.IllegalApiContentException;
 import io.apimap.client.exception.IncorrectTokenException;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.conn.HttpHostConnectException;
-import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.hc.client5.http.HttpHostConnectException;
+import org.apache.hc.client5.http.classic.methods.HttpDelete;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpPut;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.core5.http.ContentType;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 
 public class SurrogateBaseRestClient extends BaseRestClient {
@@ -58,11 +60,11 @@ public class SurrogateBaseRestClient extends BaseRestClient {
         super.addApiQuery(query);
     }
 
-    public URI performQueries(CloseableHttpClient client) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException {
+    public URI performQueries(CloseableHttpClient client) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException, URISyntaxException {
         return super.performQueries(client);
     }
 
-    public URI enumerateQueries(HttpGet request, ArrayList<ApiQuery> remainingQueries, CloseableHttpClient client, int queryCallstackDepth) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException {
+    public URI enumerateQueries(HttpGet request, ArrayList<ApiQuery> remainingQueries, CloseableHttpClient client, int queryCallstackDepth) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException, URISyntaxException {
         return super.enumerateQueries(request, remainingQueries, client, queryCallstackDepth);
     }
 
@@ -71,15 +73,15 @@ public class SurrogateBaseRestClient extends BaseRestClient {
     }
 
     public <T> T getResource(HttpGet getRequest, Class<T> resourceClassType) throws ApiRequestFailedException, IncorrectTokenException {
-        return super.getResource(getRequest, resourceClassType);
+        return super.getResource(getRequest, resourceClassType, ContentType.APPLICATION_JSON);
     }
 
     public <T> T putResource(HttpPut putRequest, Object content, Class<T> resourceClassType) throws ApiRequestFailedException, IncorrectTokenException {
-        return super.putResource(putRequest, content, resourceClassType);
+        return super.putResource(putRequest, content, resourceClassType, ContentType.APPLICATION_JSON);
     }
 
     public <T> T postResource(HttpPost postRequest, Object content, Class<T> resourceClassType) throws IllegalApiContentException, IncorrectTokenException, HttpHostConnectException, ApiRequestFailedException {
-        return super.postResource(postRequest, content, resourceClassType);
+        return super.postResource(postRequest, content, resourceClassType, ContentType.APPLICATION_JSON);
     }
 
     public int responsStatusCode(CloseableHttpResponse response) throws IOException, IncorrectTokenException {
@@ -87,7 +89,7 @@ public class SurrogateBaseRestClient extends BaseRestClient {
     }
 
     public <T> T responseResourceObject(CloseableHttpResponse response, Class<T> resourceClassType) throws IOException, IncorrectTokenException {
-        return super.responseResourceObject(response, resourceClassType);
+        return super.responseResourceObject(response, resourceClassType, ContentType.APPLICATION_JSON);
     }
 
     public String defaultAuthorizationHeaderValue(){

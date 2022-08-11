@@ -1,6 +1,9 @@
 Changelog
 ===
 
+### 11.08.2022
+- Added content-type awareness and json + markdown support
+
 ### 21.04.2022
 - Updated dependencies
 
