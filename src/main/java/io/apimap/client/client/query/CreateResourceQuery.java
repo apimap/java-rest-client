@@ -20,6 +20,7 @@ under the License.
 package io.apimap.client.client.query;
 
 import io.apimap.api.rest.jsonapi.JsonApiRestResponseWrapper;
+import org.apache.hc.core5.http.ContentType;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,12 +30,14 @@ public class CreateResourceQuery extends ApiQuery {
     protected Object object;
     protected Consumer<Object> callback;
     Class resourceClassType;
+    ContentType contentType;
 
-    public CreateResourceQuery(String key, Object object, Consumer<Object> callback) {
+    public CreateResourceQuery(String key, Object object, Consumer<Object> callback, ContentType contentType) {
         super(TYPE.CREATE_RESOURCE, key);
         this.object = object;
         this.callback = callback;
         this.resourceClassType = object.getClass();
+        this.contentType = contentType;
     }
 
     public Object getObject() {
@@ -47,6 +50,10 @@ public class CreateResourceQuery extends ApiQuery {
 
     public Consumer<Object> getCallback() {
         return callback;
+    }
+
+    public ContentType getContentType() {
+        return contentType;
     }
 
     @Override
@@ -73,6 +80,7 @@ public class CreateResourceQuery extends ApiQuery {
                 "object=" + object +
                 ", callback=" + callback +
                 ", resourceClassType=" + resourceClassType +
+                ", contentType=" + contentType +
                 ", type=" + type +
                 ", key='" + key + '\'' +
                 '}';

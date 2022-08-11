@@ -24,6 +24,7 @@ import io.apimap.api.rest.jsonapi.JsonApiRestResponseWrapper;
 import io.apimap.client.IRestClient;
 import io.apimap.client.RestClientConfiguration;
 import io.apimap.client.exception.IncorrectTokenException;
+import org.apache.hc.core5.http.ContentType;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -82,7 +83,7 @@ public class QueryQueueTest {
                 .followResource(metadataDataApiEntity.getApiVersion())
                 .onMissingCreate(metadataDataApiEntity.getApiVersion(), apiVersionDataApiEntity, apiVersionCreatedCallback)
                 .followCollection(JsonApiRestResponseWrapper.METADATA_COLLECTION)
-                .createOrUpdateResource(metadataDataApiEntity);
+                .createOrUpdateResource(metadataDataApiEntity, ContentType.APPLICATION_JSON);
 
         assertNotNull(object);
     }

@@ -32,24 +32,28 @@ import io.apimap.client.client.query.RelationshipTraversingQuery;
 import io.apimap.client.exception.ApiRequestFailedException;
 import io.apimap.client.exception.IllegalApiContentException;
 import io.apimap.client.exception.IncorrectTokenException;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.conn.HttpHostConnectException;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.HttpHostConnectException;
+import org.apache.hc.client5.http.classic.methods.HttpDelete;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpPut;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 public class BaseRestClient {
     private static final int ABSOLUTE_MAX_CALLSTACK_DEPTH = 20;
@@ -85,7 +89,7 @@ public class BaseRestClient {
         queries.add(query);
     }
 
-    protected URI performQueries(CloseableHttpClient client) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException {
+    protected URI performQueries(CloseableHttpClient client) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException, URISyntaxException {
         if(configuration.isDebugMode()){ System.out.println("Run " + this.queries.size() + " http queries"); }
         if(configuration.isDebugMode()){ System.out.println("Using configuration: " + this.configuration); }
         if(configuration.isDebugMode()){ System.out.println("Http Client: " + client); }
@@ -97,7 +101,7 @@ public class BaseRestClient {
                 configuration.getQueryCallstackDepth());
     }
 
-    protected URI enumerateQueries(HttpGet request, ArrayList<ApiQuery> remainingQueries, CloseableHttpClient client, int queryCallstackDepth) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException {
+    protected URI enumerateQueries(HttpGet request, ArrayList<ApiQuery> remainingQueries, CloseableHttpClient client, int queryCallstackDepth) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException, URISyntaxException {
         if(configuration.isDebugMode()){ System.out.println("Enumerating http queries"); }
         if(configuration.isDebugMode()){ System.out.println("Http Client: " + client); }
         if(configuration.isDebugMode()){ System.out.println("Http Request: " + request); }
@@ -109,8 +113,8 @@ public class BaseRestClient {
         }
 
         if (remainingQueries.size() <= 0) {
-            if(configuration.isDebugMode()){ System.out.println("Last query reached, returning url " + request.getURI()); }
-            return request.getURI();
+            if(configuration.isDebugMode()){ System.out.println("Last query reached, returning url " + request.getUri()); }
+            return request.getUri();
         }
 
         ApiQuery query = remainingQueries.get(0);
@@ -134,8 +138,7 @@ public class BaseRestClient {
 
         if(response != null
                 && response.getEntity() != null
-                && response.getStatusLine() != null
-                && (response.getStatusLine().getStatusCode() < 299 && response.getStatusLine().getStatusCode() >= 200)) {
+                && (response.getCode() < 299 && response.getCode() >= 200)) {
             JsonApiRestResponseWrapper element = defaultObjectMapper().readValue(response.getEntity().getContent(), JsonApiRestResponseWrapper.class);
             url = query.urlFromContent(element);
         }else{
@@ -160,10 +163,10 @@ public class BaseRestClient {
         // Check if next query is a create query and current request failed
         if (remainingQueries.size() > 1 && url == null) {
             if (remainingQueries.get(1).getType() == ApiQuery.TYPE.CREATE_RESOURCE) {
-                HttpPost postRequest = new HttpPost(request.getURI());
+                HttpPost postRequest = new HttpPost(request.getUri());
 
                 CreateResourceQuery createQuery = (CreateResourceQuery) remainingQueries.get(1);
-                Object content = postResource(postRequest, createQuery.getObject(), createQuery.getResourceClassType());
+                Object content = postResource(postRequest, createQuery.getObject(), createQuery.getResourceClassType(), createQuery.getContentType());
 
                 if (content == null) {
                     return null; //Todo throw exception
@@ -196,7 +199,7 @@ public class BaseRestClient {
                             --queryCallstackDepth
                     );
                 } else {
-                    url = request.getURI().toString();
+                    url = request.getUri().toString();
 
                     return enumerateQueries(
                             new HttpGet(url),
@@ -230,10 +233,10 @@ public class BaseRestClient {
 
             response = defaultCloseableHttpClient().execute(deleteRequest);
 
-            if(response.getStatusLine().getStatusCode() < 200 || response.getStatusLine().getStatusCode() > 299){
+            if(response.getCode() < 200 || response.getCode() > 299){
                 throw new ApiRequestFailedException(String.format(
                         "Status Code: %s, Content: %s",
-                        response.getStatusLine().getStatusCode(),
+                        response.getCode(),
                         EntityUtils.toString(response.getEntity(), "UTF-8")
                 ));
             }
@@ -255,12 +258,12 @@ public class BaseRestClient {
         }
     }
 
-    protected <T> T getResource(HttpGet getRequest, Class<T> resourceClassType) throws ApiRequestFailedException, IncorrectTokenException {
+    protected <T> T getResource(HttpGet getRequest, Class<T> resourceClassType, ContentType contentType) throws ApiRequestFailedException, IncorrectTokenException {
         CloseableHttpResponse response = null;
 
         try {
             response = defaultCloseableHttpClient().execute(getRequest);
-            return responseResourceObject(response, resourceClassType);
+            return responseResourceObject(response, resourceClassType, contentType);
         } catch (Exception e) {
             if(this.configuration.isDebugMode()){
                 System.out.println(e.getStackTrace());
@@ -275,14 +278,23 @@ public class BaseRestClient {
         }
     }
 
-    protected <T> T putResource(HttpPut putRequest, Object content, Class<T> resourceClassType) throws ApiRequestFailedException, IncorrectTokenException {
+    protected <T> T putResource(HttpPut putRequest, Object content, Class<T> resourceClassType, ContentType contentType) throws ApiRequestFailedException, IncorrectTokenException {
         CloseableHttpResponse response = null;
 
         try {
-            HttpEntity entity = new StringEntity(
-                    defaultObjectMapper().writeValueAsString(new JsonApiRestRequestWrapper<>(content)),
-                    ContentType.create("application/json")
-            );
+            HttpEntity entity = null;
+
+            if(ContentType.APPLICATION_JSON.isSameMimeType(contentType) || contentType == null) {
+                entity = new StringEntity(
+                        defaultObjectMapper().writeValueAsString(new JsonApiRestRequestWrapper<>(content)),
+                        ContentType.create("application/json"));
+            }
+
+            if(ContentType.create("text/markdown").isSameMimeType(contentType)){
+                entity = new StringEntity(
+                        (String) content,
+                        ContentType.create("text/markdown"));
+            }
 
             putRequest.setEntity(entity);
 
@@ -292,15 +304,15 @@ public class BaseRestClient {
 
             response = defaultCloseableHttpClient().execute(putRequest);
 
-            if(response.getStatusLine().getStatusCode() < 200 || response.getStatusLine().getStatusCode() > 299){
+            if(response.getCode() < 200 || response.getCode() > 299){
                 throw new ApiRequestFailedException(String.format(
                         "Status Code: %s, Content: %s",
-                        response.getStatusLine().getStatusCode(),
+                        response.getCode(),
                         EntityUtils.toString(response.getEntity(), "UTF-8")
                 ));
             }
 
-            return responseResourceObject(response, resourceClassType);
+            return responseResourceObject(response, resourceClassType, contentType);
         } catch (Exception e) {
             if(this.configuration.isDebugMode()){
                 System.out.println(e.getStackTrace());
@@ -317,13 +329,23 @@ public class BaseRestClient {
         }
     }
 
-    protected <T> T postResource(HttpPost postRequest, Object content, Class<T> resourceClassType) throws IllegalApiContentException, IncorrectTokenException, HttpHostConnectException, ApiRequestFailedException {
+    protected <T> T postResource(HttpPost postRequest, Object content, Class<T> resourceClassType, ContentType contentType) throws IllegalApiContentException, IncorrectTokenException, HttpHostConnectException, ApiRequestFailedException {
         CloseableHttpResponse response = null;
 
         try {
-            HttpEntity entity = new StringEntity(
-                    defaultObjectMapper().writeValueAsString(new JsonApiRestRequestWrapper<>(content)),
-                    ContentType.create("application/json"));
+            HttpEntity entity = null;
+
+            if(ContentType.APPLICATION_JSON.isSameMimeType(contentType) || contentType == null) {
+                entity = new StringEntity(
+                        defaultObjectMapper().writeValueAsString(new JsonApiRestRequestWrapper<>(content)),
+                        ContentType.create("application/json"));
+            }
+
+            if(ContentType.create("text/markdown").isSameMimeType(contentType)){
+                entity = new StringEntity(
+                        (String) content,
+                        ContentType.create("text/markdown"));
+            }
 
             postRequest.setEntity(entity);
 
@@ -333,23 +355,23 @@ public class BaseRestClient {
 
             response = defaultCloseableHttpClient().execute(postRequest);
 
-            if(response.getStatusLine().getStatusCode() >= 400 && response.getStatusLine().getStatusCode() < 500){
+            if(response.getCode() >= 400 && response.getCode() < 500){
                 throw new IllegalApiContentException(String.format(
                         "Status Code: %s, Content: %s",
-                        response.getStatusLine().getStatusCode(),
+                        response.getCode(),
                         EntityUtils.toString(response.getEntity(), "UTF-8")
                 ));
             }
 
-            if(response.getStatusLine().getStatusCode() >= 500 && response.getStatusLine().getStatusCode() < 600){
+            if(response.getCode() >= 500 && response.getCode() < 600){
                 throw new ApiRequestFailedException(String.format(
                         "Status Code: %s, Content: %s",
-                        response.getStatusLine().getStatusCode(),
+                        response.getCode(),
                         EntityUtils.toString(response.getEntity(), "UTF-8")
                 ));
             }
 
-            return responseResourceObject(response, resourceClassType);
+            return responseResourceObject(response, resourceClassType, contentType);
         } catch (HttpHostConnectException | IllegalApiContentException | ApiRequestFailedException e) {
             throw e;
         } catch (Exception e) {
@@ -369,14 +391,14 @@ public class BaseRestClient {
     }
 
     protected int responsStatusCode(CloseableHttpResponse response) throws IOException, IncorrectTokenException {
-        if(response.getStatusLine().getStatusCode() == 401){
+        if(response.getCode() == 401){
             throw new IncorrectTokenException("Missing API token");
         }
 
         int returnValue = -1;
 
         try {
-            returnValue = response.getStatusLine().getStatusCode();
+            returnValue = response.getCode();
         } finally {
             response.close();
         }
@@ -384,17 +406,26 @@ public class BaseRestClient {
         return returnValue;
     }
 
-    protected <T> T responseResourceObject(CloseableHttpResponse response, Class<T> resourceClassType) throws IOException, IncorrectTokenException {
-        if(response.getStatusLine().getStatusCode() == 401){
+    protected <T> T responseResourceObject(CloseableHttpResponse response, Class<T> resourceClassType, ContentType contentType) throws IOException, IncorrectTokenException {
+        if(response.getCode() == 401){
             throw new IncorrectTokenException("Missing API token");
         }
 
         T returnValue = null;
 
         try {
-            JavaType type = defaultObjectMapper().getTypeFactory().constructParametricType(JsonApiRestResponseWrapper.class, resourceClassType);
-            JsonApiRestResponseWrapper<T> element = defaultObjectMapper().readValue(response.getEntity().getContent(), type);
-            returnValue = element.getData();
+            if(ContentType.APPLICATION_JSON.isSameMimeType(contentType) || contentType == null) {
+                JavaType type = defaultObjectMapper().getTypeFactory().constructParametricType(JsonApiRestResponseWrapper.class, resourceClassType);
+                JsonApiRestResponseWrapper<T> element = defaultObjectMapper().readValue(response.getEntity().getContent(), type);
+                returnValue = element.getData();
+            }
+
+            if(ContentType.create("text/markdown").isSameMimeType(contentType)){
+                returnValue = (T) new BufferedReader(
+                        new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8))
+                        .lines()
+                        .collect(Collectors.joining("\n"));
+            }
         } finally {
             response.close();
         }

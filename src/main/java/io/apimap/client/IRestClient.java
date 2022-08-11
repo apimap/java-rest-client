@@ -20,6 +20,8 @@ under the License.
 package io.apimap.client;
 
 import io.apimap.client.exception.IncorrectTokenException;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
 
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -35,9 +37,9 @@ public interface IRestClient {
 
     // State change
     public int deleteResource() throws IOException, IncorrectTokenException;
-    public <T> T getResource(Class<T> resourceClassType) throws IOException, IncorrectTokenException;
-    public <T> T createResource(T resource) throws IOException, IncorrectTokenException;
-    public <T> T createOrUpdateResource(T resource) throws IOException, IncorrectTokenException;
+    public <T> T getResource(Class<T> resourceClassType, ContentType contentType) throws IOException, IncorrectTokenException;
+    public <T> T createResource(T resource, ContentType contentType) throws IOException, IncorrectTokenException;
+    public <T> T createOrUpdateResource(T resource, ContentType contentType) throws IOException, IncorrectTokenException;
 
     public static RestClient withConfiguration(RestClientConfiguration configuration) {
         return new RestClient(configuration);

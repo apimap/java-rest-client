@@ -21,12 +21,12 @@ import io.apimap.api.rest.ApiDataRestEntity;
 import io.apimap.client.RestClientConfiguration;
 import io.apimap.client.exception.ApiRequestFailedException;
 import io.apimap.client.exception.IllegalApiContentException;
-import org.apache.http.HttpEntity;
-import org.apache.http.StatusLine;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.HttpHostConnectException;
-import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.hc.client5.http.HttpHostConnectException;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.message.StatusLine;
 import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
@@ -54,15 +54,12 @@ public class BaseRestClientTest {
     void getResource_didFail5xxError() throws IOException {
         RestClientConfiguration configuration = new RestClientConfiguration();
 
-        StatusLine status = mock(StatusLine.class);
-        when(status.getStatusCode()).thenReturn(500);
-
         HttpEntity entity = mock(HttpEntity.class);
         String initialString = "";
         when(entity.getContent()).thenReturn(new ByteArrayInputStream(initialString.getBytes()));
 
         CloseableHttpResponse httpResponse = mock(CloseableHttpResponse.class);
-        when(httpResponse.getStatusLine()).thenReturn(status);
+        when(httpResponse.getCode()).thenReturn(500);
         when(httpResponse.getEntity()).thenReturn(entity);
 
         CloseableHttpClient httpClient = mock(CloseableHttpClient.class);
@@ -81,15 +78,12 @@ public class BaseRestClientTest {
     void createResource_didFail4xxError() throws IOException {
         RestClientConfiguration configuration = new RestClientConfiguration();
 
-        StatusLine status = mock(StatusLine.class);
-        when(status.getStatusCode()).thenReturn(401);
-
         HttpEntity entity = mock(HttpEntity.class);
         String initialString = "";
         when(entity.getContent()).thenReturn(new ByteArrayInputStream(initialString.getBytes()));
 
         CloseableHttpResponse httpResponse = mock(CloseableHttpResponse.class);
-        when(httpResponse.getStatusLine()).thenReturn(status);
+        when(httpResponse.getCode()).thenReturn(401);
         when(httpResponse.getEntity()).thenReturn(entity);
 
         CloseableHttpClient httpClient = mock(CloseableHttpClient.class);
