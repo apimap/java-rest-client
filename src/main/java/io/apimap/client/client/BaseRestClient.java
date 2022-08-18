@@ -154,8 +154,6 @@ public class BaseRestClient {
                     while(sc.hasNext()){
                         responseBody.append(sc.nextLine());
                     }
-
-                    System.out.println("Response Body: " + responseBody.toString());
                 }
             }
         }
@@ -235,9 +233,10 @@ public class BaseRestClient {
 
             if(response.getCode() < 200 || response.getCode() > 299){
                 throw new ApiRequestFailedException(String.format(
-                        "Status Code: %s, Content: %s",
+                        "[DELETE] Status Code: %s, Content: %s, URL: %s",
                         response.getCode(),
-                        EntityUtils.toString(response.getEntity(), "UTF-8")
+                        EntityUtils.toString(response.getEntity(), "UTF-8"),
+                        deleteRequest.getUri().toString()
                 ));
             }
 
@@ -296,6 +295,11 @@ public class BaseRestClient {
                         ContentType.create("text/markdown"));
             }
 
+            String text = new BufferedReader(
+                    new InputStreamReader(entity.getContent(), StandardCharsets.UTF_8))
+                    .lines()
+                    .collect(Collectors.joining("\n"));
+
             putRequest.setEntity(entity);
 
             if (this.configuration.getToken() != null) {
@@ -306,9 +310,10 @@ public class BaseRestClient {
 
             if(response.getCode() < 200 || response.getCode() > 299){
                 throw new ApiRequestFailedException(String.format(
-                        "Status Code: %s, Content: %s",
+                        "[PUT] Status Code: %s, Content: %s, URL: %s",
                         response.getCode(),
-                        EntityUtils.toString(response.getEntity(), "UTF-8")
+                        EntityUtils.toString(response.getEntity(), "UTF-8"),
+                        putRequest.getUri().toString()
                 ));
             }
 
@@ -357,17 +362,19 @@ public class BaseRestClient {
 
             if(response.getCode() >= 400 && response.getCode() < 500){
                 throw new IllegalApiContentException(String.format(
-                        "Status Code: %s, Content: %s",
+                        "[POST] Status Code: %s, Content: %s, URL: %s",
                         response.getCode(),
-                        EntityUtils.toString(response.getEntity(), "UTF-8")
+                        EntityUtils.toString(response.getEntity(), "UTF-8"),
+                        postRequest.getUri().toString()
                 ));
             }
 
             if(response.getCode() >= 500 && response.getCode() < 600){
                 throw new ApiRequestFailedException(String.format(
-                        "Status Code: %s, Content: %s",
+                        "Status Code: %s, Content: %s, URL: %s",
                         response.getCode(),
-                        EntityUtils.toString(response.getEntity(), "UTF-8")
+                        EntityUtils.toString(response.getEntity(), "UTF-8"),
+                        postRequest.getUri().toString()
                 ));
             }
 

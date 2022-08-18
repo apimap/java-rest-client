@@ -1,6 +1,9 @@
 Changelog
 ===
 
+### 18.08.2022
+- Updated debug/error messages with content URL and action type
+
 ### 11.08.2022
 - Added content-type awareness and json + markdown support
 
