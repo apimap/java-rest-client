@@ -1,20 +1,17 @@
 /*
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+Copyright 2021-2023 TELENOR NORGE AS
 
-  http://www.apache.org/licenses/LICENSE-2.0
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
  */
 
 package io.apimap.client.client;
@@ -22,9 +19,8 @@ package io.apimap.client.client;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.apimap.api.rest.ApiDataRestEntity;
-import io.apimap.api.rest.jsonapi.JsonApiRestRequestWrapper;
-import io.apimap.api.rest.jsonapi.JsonApiRestResponseWrapper;
 import io.apimap.client.RestClientConfiguration;
 import io.apimap.client.client.query.ApiQuery;
 import io.apimap.client.client.query.CreateResourceQuery;
@@ -32,6 +28,11 @@ import io.apimap.client.client.query.RelationshipTraversingQuery;
 import io.apimap.client.exception.ApiRequestFailedException;
 import io.apimap.client.exception.IllegalApiContentException;
 import io.apimap.client.exception.IncorrectTokenException;
+import io.apimap.client.exception.MissingAccessTokenException;
+import io.apimap.oauth.TokenSuccessfulResponse;
+import io.apimap.orchestra.rest.ZeroconfConfigurationResponse;
+import io.apimap.rest.jsonapi.JsonApiRestRequestWrapper;
+import io.apimap.rest.jsonapi.JsonApiRestResponseWrapper;
 import org.apache.hc.client5.http.HttpHostConnectException;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
@@ -40,10 +41,10 @@ import org.apache.hc.client5.http.classic.methods.HttpPut;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.*;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.message.BasicHeader;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -51,27 +52,71 @@ import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class BaseRestClient {
     private static final int ABSOLUTE_MAX_CALLSTACK_DEPTH = 20;
     private static final int MINIMUM_CALLSTACK_DEPTH = 0;
 
-    protected RestClientConfiguration configuration;
+    protected Optional<RestClientConfiguration> configuration;
 
     protected CloseableHttpClient httpClient;
 
     protected ArrayList<ApiQuery> queries = new ArrayList<>();
+    protected Optional<String> apiToken = Optional.empty();
 
-    public BaseRestClient(RestClientConfiguration configuration) {
-        this.configuration = configuration;
+    protected static class Endpoints {
+        private String orchestra;
+        private String api;
+
+        public Endpoints(String orchestra, String api) {
+            this.orchestra = orchestra;
+            this.api = api;
+        }
+
+        public String getOrchestra() {
+            return orchestra;
+        }
+
+        public void setOrchestra(String orchestra) {
+            this.orchestra = orchestra;
+        }
+
+        public String getApi() {
+            return api;
+        }
+
+        public void setApi(String api) {
+            this.api = api;
+        }
+
+        @Override
+        public String toString() {
+            return "Endpoints{" +
+                "orchestra='" + orchestra + '\'' +
+                ", api='" + api + '\'' +
+                '}';
+        }
     }
 
+    @SuppressFBWarnings
+    public BaseRestClient(RestClientConfiguration configuration) {
+        this.configuration = Optional.ofNullable(configuration);
+    }
+
+    @SuppressFBWarnings
     public BaseRestClient(RestClientConfiguration configuration, CloseableHttpClient httpClient) {
-        this.configuration = configuration;
+        this.configuration =  Optional.ofNullable(configuration);
         this.httpClient = httpClient;
+    }
+
+    public void setApiToken(String apiToken) {
+        this.apiToken = Optional.ofNullable(apiToken);
+    }
+
+    private Optional<String> getApiToken(){
+        return this.apiToken;
     }
 
     protected ObjectMapper defaultObjectMapper() {
@@ -80,59 +125,136 @@ public class BaseRestClient {
                 .configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
     }
 
-    protected CloseableHttpClient defaultCloseableHttpClient() {
+    protected CloseableHttpClient defaultCloseableHttpClient(UUID uuid) {
         if(this.httpClient != null) return this.httpClient;
-        return HttpClients.createDefault();
+
+        final ArrayList<Header> headers = new ArrayList<>();
+        headers.add(new BasicHeader("X-Request-Id", uuid.toString()));
+
+        return HttpClients.custom().setDefaultHeaders(headers).build();
     }
 
     protected void addApiQuery(ApiQuery query) {
         queries.add(query);
     }
 
-    protected URI performQueries(CloseableHttpClient client) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException, URISyntaxException {
-        if(configuration.isDebugMode()){ System.out.println("Run " + this.queries.size() + " http queries"); }
-        if(configuration.isDebugMode()){ System.out.println("Using configuration: " + this.configuration); }
-        if(configuration.isDebugMode()){ System.out.println("Http Client: " + client); }
+    protected Optional<Endpoints> getEndpoints(CloseableHttpClient client) throws IOException {
+        if(configuration.isPresent() && configuration.get().isDebugMode()){
+            System.out.println("[ZEROCONF] Zeroconf from endpoint: " + configuration.get().getZeroconfURL());
+        }
 
-        return enumerateQueries(
-                new HttpGet(configuration.getServiceRootEndpointUrl()),
-                queries,
-                client,
-                configuration.getQueryCallstackDepth());
+        if(!configuration.isPresent() || configuration.get().getZeroconfURL() == null){
+            return Optional.empty();
+        }
+
+        CloseableHttpResponse response = null;
+
+        Endpoints returnValue = null;
+
+        try {
+            response = client.execute(new HttpGet(configuration.get().getZeroconfURL()));
+
+            ZeroconfConfigurationResponse configurationResponse = defaultObjectMapper().readValue(response.getEntity().getContent(), ZeroconfConfigurationResponse.class);
+
+            returnValue = new Endpoints(
+                configurationResponse.getEndpoint().getOrchestra(),
+                configurationResponse.getEndpoint().getApi()
+            );
+        } finally {
+            if (response != null) {
+                response.close();
+            }
+        }
+
+        return Optional.of(returnValue);
     }
 
-    protected URI enumerateQueries(HttpGet request, ArrayList<ApiQuery> remainingQueries, CloseableHttpClient client, int queryCallstackDepth) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException, URISyntaxException {
-        if(configuration.isDebugMode()){ System.out.println("Enumerating http queries"); }
-        if(configuration.isDebugMode()){ System.out.println("Http Client: " + client); }
-        if(configuration.isDebugMode()){ System.out.println("Http Request: " + request); }
-        if(configuration.isDebugMode()){ System.out.println("Callstack depth left: " + queryCallstackDepth); }
+    protected Optional<String> getJwtToken(CloseableHttpClient client, String url) throws IOException, MissingAccessTokenException {
+        if(configuration.isPresent() && configuration.get().isDebugMode()){
+            System.out.println("[JWT] JWT from endpoint : " + url);
+        }
+
+        if(url == null){
+            return Optional.empty();
+        }
+
+        CloseableHttpResponse response = null;
+
+        String returnValue = null;
+
+        try {
+            if(configuration.isPresent() && configuration.get().isDebugMode()){
+                System.out.println("[JWT] Request: " + url + "?client_id=" + this.configuration.get().getAccount() +"&client_secret=" + this.configuration.get().getSecret());
+            }
+
+            response = client.execute(new HttpPost(url + "?client_id=" + this.configuration.get().getAccount() +"&client_secret=" + this.configuration.get().getSecret()));
+
+            TokenSuccessfulResponse tokenResponse = defaultObjectMapper().readValue(response.getEntity().getContent(), TokenSuccessfulResponse.class);
+
+            returnValue = tokenResponse.getAccessToken();
+        } catch (com.fasterxml.jackson.databind.exc.MismatchedInputException e) {
+            throw new MissingAccessTokenException("Missing access token, client not authorized.");
+        } finally {
+            if (response != null) {
+                response.close();
+            }
+        }
+
+        if(configuration.isPresent() && configuration.get().isDebugMode()){
+            System.out.println("[JWT] Token received: " + returnValue);
+        }
+
+        return Optional.of(returnValue);
+    }
+
+    protected Optional<URI> performQueries(CloseableHttpClient client, String url, String jwt) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException, URISyntaxException {
+        if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] Run " + this.queries.size() + " http queries"); }
+        if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] Configuration: " + this.configuration); }
+        if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] Client: " + client); }
+
+        if(configuration.isPresent()){
+            return Optional.of(enumerateQueries(
+                new HttpGet(url),
+                jwt,
+                queries,
+                client,
+                configuration.get().getQueryCallstackDepth()));
+        }
+
+        return Optional.empty();
+    }
+
+    protected URI enumerateQueries(HttpGet request, String jwt, ArrayList<ApiQuery> remainingQueries, CloseableHttpClient client, int queryCallstackDepth) throws IOException, ApiRequestFailedException, IllegalApiContentException, IncorrectTokenException, URISyntaxException {
+        if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] Enumerating http queries"); }
+        if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] Client: " + client); }
+        if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] Request: " + request); }
+        if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] JWT: " + jwt); }
+        if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] Callstack depth left: " + queryCallstackDepth); }
 
         if (queryCallstackDepth < MINIMUM_CALLSTACK_DEPTH || queryCallstackDepth > ABSOLUTE_MAX_CALLSTACK_DEPTH) {
-            if(configuration.isDebugMode()){ System.out.println("Max callstack depth reached, quitting"); }
+            if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] Max callstack depth reached, quitting"); }
             return null;
         }
 
         if (remainingQueries.size() <= 0) {
-            if(configuration.isDebugMode()){ System.out.println("Last query reached, returning url " + request.getUri()); }
+            if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] Last query reached, returning url " + request.getUri()); }
             return request.getUri();
         }
 
         ApiQuery query = remainingQueries.get(0);
-        if(configuration.isDebugMode()){ System.out.println("Running query " + query.getType()); }
+        if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] Running query " + query.getType()); }
 
         if (query.getType() == ApiQuery.TYPE.CREATE_RESOURCE) {
             return enumerateQueries(
                     request,
+                    jwt,
                     new ArrayList<ApiQuery>(remainingQueries.subList(1, remainingQueries.size())),
                     client,
                     --queryCallstackDepth
             );
         }
 
-        /*
-        JavaType type = objectMapper.getTypeFactory().constructParametricType(JsonApiRootObject.class, ApiDataRestEntity.class);
-        JsonApiRootObject<ApiDataRestEntity> output = objectMapper.readValue(input, type);
-        */
+        request.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + jwt);
         CloseableHttpResponse response = client.execute(request);
         String url = null;
 
@@ -142,19 +264,8 @@ public class BaseRestClient {
             JsonApiRestResponseWrapper element = defaultObjectMapper().readValue(response.getEntity().getContent(), JsonApiRestResponseWrapper.class);
             url = query.urlFromContent(element);
         }else{
-            if (configuration.isDebugMode()) {
-                System.out.println("CloseableHttpResponse returned unusable response");
-
-                if(response != null
-                    && response.getEntity() != null
-                    && response.getEntity().getContent() != null) {
-
-                    Scanner sc = new Scanner(response.getEntity().getContent());
-                    StringBuilder responseBody = new StringBuilder();
-                    while(sc.hasNext()){
-                        responseBody.append(sc.nextLine());
-                    }
-                }
+            if (configuration.isPresent() && configuration.get().isDebugMode()) {
+                System.out.println("[ENUMERATING] CloseableHttpResponse returned unusable response");
             }
         }
 
@@ -162,28 +273,29 @@ public class BaseRestClient {
         if (remainingQueries.size() > 1 && url == null) {
             if (remainingQueries.get(1).getType() == ApiQuery.TYPE.CREATE_RESOURCE) {
                 HttpPost postRequest = new HttpPost(request.getUri());
+                postRequest.setHeader("Authorization", "Bearer " + jwt);
 
                 CreateResourceQuery createQuery = (CreateResourceQuery) remainingQueries.get(1);
-                Object content = postResource(postRequest, createQuery.getObject(), createQuery.getResourceClassType(), createQuery.getContentType());
+                Object content = postResource(postRequest, createQuery.getObject(), createQuery.getResourceClassType(), createQuery.getContentType(), client);
 
                 if (content == null) {
                     return null; //Todo throw exception
                 }
 
                 if (createQuery.getCallback() != null) {
-                    if(configuration.isDebugMode()){ System.out.println("New resource created, calling callback"); }
+                    if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] New resource created, calling callback"); }
 
                     if (createQuery.getResourceClassType() == ApiDataRestEntity.class) {
                         // Store api key
                         if(((ApiDataRestEntity) content).getMeta() != null) {
-                            this.configuration.setToken(((ApiDataRestEntity) content).getMeta().getToken());
+                            this.setApiToken(((ApiDataRestEntity) content).getMeta().getToken());
                         }
                         createQuery.getCallback().accept(content);
                     } else {
                         createQuery.getCallback().accept(content);
                     }
                 }else{
-                    if(configuration.isDebugMode()){ System.out.println("New resource created, no callback found"); }
+                    if(configuration.isPresent() && configuration.get().isDebugMode()){ System.out.println("[ENUMERATING] New resource created, no callback found"); }
                 }
 
                 // Check if next query is a relationship query that works on the content received
@@ -192,6 +304,7 @@ public class BaseRestClient {
 
                     return enumerateQueries(
                             new HttpGet(url),
+                            jwt,
                             new ArrayList<ApiQuery>(remainingQueries.subList(1, remainingQueries.size())),
                             client,
                             --queryCallstackDepth
@@ -201,6 +314,7 @@ public class BaseRestClient {
 
                     return enumerateQueries(
                             new HttpGet(url),
+                            jwt,
                             remainingQueries,
                             client,
                             --queryCallstackDepth
@@ -212,6 +326,7 @@ public class BaseRestClient {
         if (url != null) {
             return enumerateQueries(
                     new HttpGet(url),
+                    jwt,
                     new ArrayList<ApiQuery>(remainingQueries.subList(1, remainingQueries.size())),
                     client,
                     --queryCallstackDepth
@@ -221,15 +336,21 @@ public class BaseRestClient {
         return null;
     }
 
-    protected int deleteResource(HttpDelete deleteRequest) throws ApiRequestFailedException, IncorrectTokenException {
+    protected int deleteResource(HttpDelete deleteRequest, CloseableHttpClient client) throws ApiRequestFailedException, IncorrectTokenException {
         CloseableHttpResponse response = null;
 
         try {
-            if (this.configuration.getToken() != null) {
-                deleteRequest.setHeader("Authorization", defaultAuthorizationHeaderValue());
+
+            if(this.getApiToken().isPresent()) {
+                deleteRequest.setHeader("Apimap-Api-Token", defaultAuthorizationHeaderValue());
             }
 
-            response = defaultCloseableHttpClient().execute(deleteRequest);
+            if(configuration.isPresent() && configuration.get().isDebugMode()) {
+                System.out.println("[DELETE] " + deleteRequest.getHeader("Authorization"));
+                System.out.println("[DELETE] " + deleteRequest.getHeader("Apimap-Api-Token"));
+            }
+
+            response = client.execute(deleteRequest);
 
             if(response.getCode() < 200 || response.getCode() > 299){
                 throw new ApiRequestFailedException(String.format(
@@ -240,10 +361,10 @@ public class BaseRestClient {
                 ));
             }
 
-            return responsStatusCode(response);
+            return responseStatusCode(response);
         } catch (Exception e) {
-            if(this.configuration.isDebugMode()){
-                System.out.println(e.getStackTrace());
+            if(configuration.isPresent() && configuration.get().isDebugMode()){
+                System.out.println(Arrays.toString(e.getStackTrace()));
             }
             throw new ApiRequestFailedException(e.getMessage());
         } finally {
@@ -257,15 +378,15 @@ public class BaseRestClient {
         }
     }
 
-    protected <T> T getResource(HttpGet getRequest, Class<T> resourceClassType, ContentType contentType) throws ApiRequestFailedException, IncorrectTokenException {
+    protected <T> T getResource(HttpGet getRequest, Class<T> resourceClassType, ContentType contentType, CloseableHttpClient client) throws ApiRequestFailedException, IncorrectTokenException {
         CloseableHttpResponse response = null;
 
         try {
-            response = defaultCloseableHttpClient().execute(getRequest);
+            response = client.execute(getRequest);
             return responseResourceObject(response, resourceClassType, contentType);
         } catch (Exception e) {
-            if(this.configuration.isDebugMode()){
-                System.out.println(e.getStackTrace());
+            if(configuration.isPresent() && configuration.get().isDebugMode()){
+                System.out.println(Arrays.toString(e.getStackTrace()));
             }
             throw new ApiRequestFailedException(e.getMessage());
         } finally {
@@ -277,7 +398,7 @@ public class BaseRestClient {
         }
     }
 
-    protected <T> T putResource(HttpPut putRequest, Object content, Class<T> resourceClassType, ContentType contentType) throws ApiRequestFailedException, IncorrectTokenException {
+    protected <T> T putResource(HttpPut putRequest, Object content, Class<T> resourceClassType, ContentType contentType, CloseableHttpClient client) throws ApiRequestFailedException, IncorrectTokenException {
         CloseableHttpResponse response = null;
 
         try {
@@ -295,18 +416,22 @@ public class BaseRestClient {
                         ContentType.create("text/markdown"));
             }
 
-            String text = new BufferedReader(
-                    new InputStreamReader(entity.getContent(), StandardCharsets.UTF_8))
-                    .lines()
-                    .collect(Collectors.joining("\n"));
+            if(configuration.isPresent() && configuration.get().isDebugMode()) {
+                System.out.println("[PUT] PUT resource: " + content.toString());
+            }
 
             putRequest.setEntity(entity);
 
-            if (this.configuration.getToken() != null) {
-                putRequest.setHeader("Authorization", defaultAuthorizationHeaderValue());
+            if (this.getApiToken().isPresent()) {
+                putRequest.setHeader("Apimap-Api-Token", defaultAuthorizationHeaderValue());
             }
 
-            response = defaultCloseableHttpClient().execute(putRequest);
+            if(configuration.isPresent() && configuration.get().isDebugMode()) {
+                System.out.println("[PUT] " + putRequest.getHeader("Authorization"));
+                System.out.println("[PUT] " + putRequest.getHeader("Apimap-Api-Token"));
+            }
+
+            response = client.execute(putRequest);
 
             if(response.getCode() < 200 || response.getCode() > 299){
                 throw new ApiRequestFailedException(String.format(
@@ -318,23 +443,21 @@ public class BaseRestClient {
             }
 
             return responseResourceObject(response, resourceClassType, contentType);
-        } catch (Exception e) {
-            if(this.configuration.isDebugMode()){
-                System.out.println(e.getStackTrace());
+        } catch (ProtocolException | IOException | URISyntaxException e) {
+            if(configuration.isPresent() && configuration.get().isDebugMode()){
+                System.out.println(Arrays.toString(e.getStackTrace()));
             }
             throw new ApiRequestFailedException(e.getMessage());
         } finally {
             if(response != null) {
                 try {
                     response.close();
-                }catch (Exception ignored){
-
-                }
+                }catch (Exception ignored){}
             }
         }
     }
 
-    protected <T> T postResource(HttpPost postRequest, Object content, Class<T> resourceClassType, ContentType contentType) throws IllegalApiContentException, IncorrectTokenException, HttpHostConnectException, ApiRequestFailedException {
+    protected <T> T postResource(HttpPost postRequest, Object content, Class<T> resourceClassType, ContentType contentType, CloseableHttpClient client) throws IllegalApiContentException, IncorrectTokenException, HttpHostConnectException, ApiRequestFailedException {
         CloseableHttpResponse response = null;
 
         try {
@@ -354,11 +477,16 @@ public class BaseRestClient {
 
             postRequest.setEntity(entity);
 
-            if (this.configuration.getToken() != null) {
-                postRequest.setHeader("Authorization", defaultAuthorizationHeaderValue());
+            if (this.getApiToken().isPresent()) {
+                postRequest.setHeader("Apimap-Api-Token", defaultAuthorizationHeaderValue());
             }
 
-            response = defaultCloseableHttpClient().execute(postRequest);
+            if(configuration.isPresent() && configuration.get().isDebugMode()) {
+                System.out.println("[POST] " + postRequest.getHeader("Authorization"));
+                System.out.println("[POST] " + postRequest.getHeader("Apimap-Api-Token"));
+            }
+
+            response = client.execute(postRequest);
 
             if(response.getCode() >= 400 && response.getCode() < 500){
                 throw new IllegalApiContentException(String.format(
@@ -371,7 +499,7 @@ public class BaseRestClient {
 
             if(response.getCode() >= 500 && response.getCode() < 600){
                 throw new ApiRequestFailedException(String.format(
-                        "Status Code: %s, Content: %s, URL: %s",
+                        "[POST] Status Code: %s, Content: %s, URL: %s",
                         response.getCode(),
                         EntityUtils.toString(response.getEntity(), "UTF-8"),
                         postRequest.getUri().toString()
@@ -382,8 +510,8 @@ public class BaseRestClient {
         } catch (HttpHostConnectException | IllegalApiContentException | ApiRequestFailedException e) {
             throw e;
         } catch (Exception e) {
-            if(this.configuration.isDebugMode()){
-                System.out.println(e.getStackTrace());
+            if(configuration.isPresent() && configuration.get().isDebugMode()){
+                System.out.println(Arrays.toString(e.getStackTrace()));
             }
             throw new ApiRequestFailedException(e.getMessage());
         } finally {
@@ -397,7 +525,7 @@ public class BaseRestClient {
         }
     }
 
-    protected int responsStatusCode(CloseableHttpResponse response) throws IOException, IncorrectTokenException {
+    protected int responseStatusCode(CloseableHttpResponse response) throws IOException, IncorrectTokenException {
         if(response.getCode() == 401){
             throw new IncorrectTokenException("Missing API token");
         }
@@ -428,10 +556,12 @@ public class BaseRestClient {
             }
 
             if(ContentType.create("text/markdown").isSameMimeType(contentType)){
-                returnValue = (T) new BufferedReader(
-                        new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8))
-                        .lines()
-                        .collect(Collectors.joining("\n"));
+                try(InputStreamReader inputStreamReader = new InputStreamReader(response.getEntity().getContent(), StandardCharsets.UTF_8);
+                    BufferedReader bufferedReader = new BufferedReader(inputStreamReader)){
+                        returnValue = (T) bufferedReader
+                                .lines()
+                                .collect(Collectors.joining("\n"));
+                }
             }
         } finally {
             response.close();
@@ -441,7 +571,11 @@ public class BaseRestClient {
     }
 
     protected String defaultAuthorizationHeaderValue(){
-        return "Bearer " + this.configuration.getToken();
+        if(getApiToken().isPresent()){
+            return getApiToken().get();
+        }
+
+        return null;
     }
 
     @Override

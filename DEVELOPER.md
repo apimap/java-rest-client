@@ -15,34 +15,34 @@ This section is targeted to developers that want to use the REST Client provided
 
 This is the definition of our REST Client.
 
-| Component | Description |
-|---|---|
-| RestClient | Code responsible for creating the query stack and responding according to the guidance given in response from the API service |
-| RestClientConfiguration | Handle the dynamic properties configured to enable usage of the RestClient |
+| Component               | Description                                                                                                                   |
+|-------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| RestClient              | Code responsible for creating the query stack and responding according to the guidance given in response from the API service |
+| RestClientConfiguration | Handle the dynamic properties configured to enable usage of the RestClient                                                    |
 
 ### RestClient
 
 The main philosophy behind the design is that collections and resources are the object types behind an REST API. These resources can be queried for paths, interesting links to other associated resources and manipulated using REST Commands (POST/PUT/GET/DELETE).
 
 #### Error Handling
-| Component | Description |
-|---|---|
+| Component        | Description                                                          |
+|------------------|----------------------------------------------------------------------|
 | withErrorHandler | Adds a callback that is performed when an error occurs in the client |
 
 #### Resource Discovery
-| Component | Description |
-|---|---|
+| Component        | Description                                      |
+|------------------|--------------------------------------------------|
 | followCollection | Follows a item in a collection the the given URL |
-| followResource | Follows a relationship defined by a resource |
+| followResource   | Follows a relationship defined by a resource     |
 
 #### Resource Manipulation
-| Component | Description |
-|---|---|
-| getResource | Get the content of the resource defined by the callstack |
-| onMissingCreate | If the resource is not found, create this new resource instead. Enables a daisy chained callstack with multiple create statements nested |
-| createResource | Create a new resource at the location defined by the callstack. Fails if a resource is already existing. |
-| createOrUpdateResource | If a resource is already existing the new resource will replace the existing |
-| deleteResource | Delete the resource defined by the callstack |
+| Component              | Description                                                                                                                              |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| getResource            | Get the content of the resource defined by the callstack                                                                                 |
+| onMissingCreate        | If the resource is not found, create this new resource instead. Enables a daisy chained callstack with multiple create statements nested |
+| createResource         | Create a new resource at the location defined by the callstack. Fails if a resource is already existing.                                 |
+| createOrUpdateResource | If a resource is already existing the new resource will replace the existing                                                             |
+| deleteResource         | Delete the resource defined by the callstack                                                                                             |
 
 ### RestClientConfiguration
 

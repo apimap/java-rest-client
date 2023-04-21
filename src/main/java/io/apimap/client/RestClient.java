@@ -1,20 +1,17 @@
 /*
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+Copyright 2021-2023 TELENOR NORGE AS
 
-  http://www.apache.org/licenses/LICENSE-2.0
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
  */
 
 package io.apimap.client;
@@ -31,11 +28,13 @@ import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.classic.methods.HttpPut;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpHeaders;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class RestClient extends BaseRestClient implements IRestClient {
 
@@ -56,6 +55,11 @@ public class RestClient extends BaseRestClient implements IRestClient {
 
     public RestClient withErrorHandler(Consumer<String> handler){
         this.errorHandler = handler;
+        return this;
+    }
+
+    public RestClient withApiToken(String token){
+        this.apiToken = Optional.ofNullable(token);
         return this;
     }
 
@@ -80,17 +84,40 @@ public class RestClient extends BaseRestClient implements IRestClient {
     }
 
     public int deleteResource() throws IOException, IncorrectTokenException {
-        if(configuration.isDryRunMode()) {
+        if(configuration.isPresent() && configuration.get().isDryRunMode()) {
             return 204;
         }
 
-        CloseableHttpClient httpClient = defaultCloseableHttpClient();
+        CloseableHttpClient httpClient = defaultCloseableHttpClient(UUID.randomUUID());
 
         int returnValue = -1;
 
         try {
-            URI contentURI = performQueries(httpClient);
-            returnValue = deleteResource(new HttpDelete(contentURI));
+            Optional<Endpoints> endpoints = getEndpoints(httpClient);
+
+            if(!endpoints.isPresent()){
+                this.errorHandler.accept("Unable to get zeroconf");
+                return returnValue;
+            }
+
+            Optional<String> jwt = getJwtToken(httpClient, endpoints.get().getOrchestra());
+
+            if(!jwt.isPresent()){
+                this.errorHandler.accept("Unable to get jwt");
+                return returnValue;
+            }
+
+            Optional<URI> contentURI = performQueries(httpClient, endpoints.get().getApi(), jwt.get());
+
+            if(!contentURI.isPresent()){
+                this.errorHandler.accept("Unable to travers path to resource");
+                return returnValue;
+            }
+
+            HttpDelete request = new HttpDelete(contentURI.get());
+            request.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + jwt.get());
+
+            returnValue = deleteResource(request, httpClient);
         } catch (Exception e) {
             if(this.errorHandler != null){
                 this.errorHandler.accept(e.getMessage());
@@ -103,7 +130,7 @@ public class RestClient extends BaseRestClient implements IRestClient {
     }
 
     public <T> T getResource(Class<T> resourceClassType, ContentType contentType) throws IOException, IncorrectTokenException {
-        if(configuration.isDryRunMode()) {
+        if(configuration.isPresent() && configuration.get().isDryRunMode()) {
             try {
                 return resourceClassType.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
@@ -114,13 +141,36 @@ public class RestClient extends BaseRestClient implements IRestClient {
             }
         }
 
-        CloseableHttpClient httpClient = defaultCloseableHttpClient();
+        CloseableHttpClient httpClient = defaultCloseableHttpClient(UUID.randomUUID());
 
         T returnValue = null;
 
         try {
-            URI contentURI = performQueries(httpClient);
-            returnValue = getResource(new HttpGet(contentURI), resourceClassType, contentType);
+            Optional<Endpoints> endpoints = getEndpoints(httpClient);
+
+            if(!endpoints.isPresent()){
+                this.errorHandler.accept("[GET] Unable to get zeroconf");
+                return returnValue;
+            }
+
+            Optional<String> jwt = getJwtToken(httpClient, endpoints.get().getOrchestra());
+
+            if(!jwt.isPresent()){
+                this.errorHandler.accept("[GET] Unable to get jwt");
+                return returnValue;
+            }
+
+            Optional<URI> contentURI = performQueries(httpClient, endpoints.get().getApi(), jwt.get());
+
+            if(!contentURI.isPresent()){
+                this.errorHandler.accept("[GET] Unable to travers path to resource");
+                return returnValue;
+            }
+
+            HttpGet request = new HttpGet(contentURI.get());
+            request.setHeader("Authorization", "Bearer " + jwt.get());
+
+            returnValue = getResource(request, resourceClassType, contentType, httpClient);
         } catch (Exception e) {
             if(this.errorHandler != null){
                 this.errorHandler.accept(e.getMessage());
@@ -133,7 +183,7 @@ public class RestClient extends BaseRestClient implements IRestClient {
     }
 
     public <T> T createResource(T object, ContentType contentType) throws IOException, IncorrectTokenException {
-        if(configuration.isDryRunMode()) {
+        if(configuration.isPresent() && configuration.get().isDryRunMode()) {
             try {
                 return (T) object.getClass().getDeclaredConstructor().newInstance();
             } catch (Exception e) {
@@ -144,13 +194,36 @@ public class RestClient extends BaseRestClient implements IRestClient {
             }
         }
 
-        CloseableHttpClient httpClient = defaultCloseableHttpClient();
+        CloseableHttpClient httpClient = defaultCloseableHttpClient(UUID.randomUUID());
 
         T returnValue = null;
 
         try {
-            URI contentURI = performQueries(httpClient);
-            returnValue = (T) postResource(new HttpPost(contentURI), object, object.getClass(), contentType);
+            Optional<Endpoints> endpoints = getEndpoints(httpClient);
+
+            if(!endpoints.isPresent()){
+                this.errorHandler.accept("[POST] Unable to get zeroconf");
+                return returnValue;
+            }
+
+            Optional<String> jwt = getJwtToken(httpClient, endpoints.get().getOrchestra());
+
+            if(!jwt.isPresent()){
+                this.errorHandler.accept("[POST] Unable to get jwt");
+                return returnValue;
+            }
+
+            Optional<URI> contentURI = performQueries(httpClient, endpoints.get().getApi(), jwt.get());
+
+            if(!contentURI.isPresent()){
+                this.errorHandler.accept("[POST] Unable to travers path to resource");
+                return returnValue;
+            }
+
+            HttpPost request = new HttpPost(contentURI.get());
+            request.setHeader("Authorization", "Bearer " + jwt.get());
+
+            returnValue = (T) postResource(request, object, object.getClass(), contentType, httpClient);
         } catch (Exception e) {
             if(this.errorHandler != null){
                 this.errorHandler.accept(e.getMessage());
@@ -163,7 +236,7 @@ public class RestClient extends BaseRestClient implements IRestClient {
     }
 
     public <T> T createOrUpdateResource(T object, ContentType contentType) throws IOException, IncorrectTokenException {
-        if(configuration.isDryRunMode()) {
+        if(configuration.isPresent() && configuration.get().isDryRunMode()) {
             try {
                 return (T) object.getClass().getDeclaredConstructor().newInstance();
             } catch (Exception e) {
@@ -174,14 +247,40 @@ public class RestClient extends BaseRestClient implements IRestClient {
             }
         }
 
-        CloseableHttpClient httpClient = defaultCloseableHttpClient();
+        CloseableHttpClient httpClient = defaultCloseableHttpClient(UUID.randomUUID());
 
         T returnValue = null;
 
         try {
-            URI contentURI = performQueries(httpClient);
-            returnValue = (T) putResource(new HttpPut(contentURI), object, object.getClass(), contentType);
+            Optional<Endpoints> endpoints = getEndpoints(httpClient);
+
+            if(!endpoints.isPresent()){
+                this.errorHandler.accept("[PUT] Unable to get zeroconf");
+                return returnValue;
+            }
+
+            Optional<String> jwt = getJwtToken(httpClient, endpoints.get().getOrchestra());
+
+            if(!jwt.isPresent()){
+                this.errorHandler.accept("[PUT] Unable to get jwt");
+                return returnValue;
+            }
+
+            Optional<URI> contentURI = performQueries(httpClient, endpoints.get().getApi(), jwt.get());
+
+            if(!contentURI.isPresent()){
+                this.errorHandler.accept("[PUT] Unable to travers path to resource");
+                return returnValue;
+            }
+
+            HttpPut request = new HttpPut(contentURI.get());
+            request.setHeader("Authorization", "Bearer " + jwt.get());
+
+            returnValue = (T) putResource(request, object, object.getClass(), contentType, httpClient);
         } catch (Exception e) {
+            if(configuration.isPresent() && configuration.get().isDryRunMode()) {
+                System.out.println("[PUT] Exception: " + e.getMessage());
+            }
             if(this.errorHandler != null){
                 this.errorHandler.accept(e.getMessage());
             }

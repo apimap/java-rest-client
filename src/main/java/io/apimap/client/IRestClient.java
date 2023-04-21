@@ -1,33 +1,30 @@
 /*
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+Copyright 2021-2023 TELENOR NORGE AS
 
-  http://www.apache.org/licenses/LICENSE-2.0
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
  */
 
 package io.apimap.client;
 
 import io.apimap.client.exception.IncorrectTokenException;
 import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpEntity;
 
 import java.io.IOException;
 import java.util.function.Consumer;
 
 public interface IRestClient {
     public RestClient withErrorHandler(Consumer<String> callback);
+    public RestClient withApiToken(String token);
 
     // Traversing methods
     public RestClient followCollection(String relationshipId, String key);
@@ -41,7 +38,8 @@ public interface IRestClient {
     public <T> T createResource(T resource, ContentType contentType) throws IOException, IncorrectTokenException;
     public <T> T createOrUpdateResource(T resource, ContentType contentType) throws IOException, IncorrectTokenException;
 
-    public static RestClient withConfiguration(RestClientConfiguration configuration) {
+    public static
+    RestClient withConfiguration(RestClientConfiguration configuration) {
         return new RestClient(configuration);
     }
 }

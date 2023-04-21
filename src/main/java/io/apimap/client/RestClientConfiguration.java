@@ -1,20 +1,17 @@
 /*
-Licensed to the Apache Software Foundation (ASF) under one
-or more contributor license agreements.  See the NOTICE file
-distributed with this work for additional information
-regarding copyright ownership.  The ASF licenses this file
-to you under the Apache License, Version 2.0 (the
-"License"); you may not use this file except in compliance
-with the License.  You may obtain a copy of the License at
+Copyright 2021-2023 TELENOR NORGE AS
 
-  http://www.apache.org/licenses/LICENSE-2.0
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-Unless required by applicable law or agreed to in writing,
-software distributed under the License is distributed on an
-"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-KIND, either express or implied.  See the License for the
-specific language governing permissions and limitations
-under the License.
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
  */
 
 package io.apimap.client;
@@ -27,33 +24,45 @@ public class RestClientConfiguration implements Serializable {
 
     private boolean dryRunMode = false;
     private boolean debugMode = DEFAULT_LOGGER_ENABLED;
-    private String token;
-    private String serviceRootEndpointUrl;
-    private Integer queryCallstackDepth = DEFAULT_CALLSTACK_MAX_DEPTH;
 
+    private String secret;
+    private String account;
+    private String zeroconfURL;
+
+    private Integer queryCallstackDepth = DEFAULT_CALLSTACK_MAX_DEPTH;
 
     public RestClientConfiguration() {
     }
 
-    public RestClientConfiguration(String serviceRootEndpointUrl) {
-        this.serviceRootEndpointUrl = serviceRootEndpointUrl;
+    public RestClientConfiguration(final String zeroconfURL) {
+        this.zeroconfURL = zeroconfURL;
     }
 
-    public RestClientConfiguration(String token, String serviceRootEndpointUrl) {
-        this.token = token;
-        this.serviceRootEndpointUrl = serviceRootEndpointUrl;
+    public RestClientConfiguration(final String account,
+                                   final String secret,
+                                   final String zeroconfURL) {
+        this.secret = secret;
+        this.zeroconfURL = zeroconfURL;
         this.queryCallstackDepth = DEFAULT_CALLSTACK_MAX_DEPTH;
     }
 
-    public RestClientConfiguration(String token, String serviceRootEndpointUrl, Integer queryCallstackDepth) {
-        this.token = token;
-        this.serviceRootEndpointUrl = serviceRootEndpointUrl;
+    public RestClientConfiguration(final String account,
+                                   final String secret,
+                                   final String zeroconfURL,
+                                   final Integer queryCallstackDepth) {
+        this.account = account;
+        this.secret = secret;
+        this.zeroconfURL = zeroconfURL;
         this.queryCallstackDepth = queryCallstackDepth;
     }
 
-    public RestClientConfiguration(String token, String serviceRootEndpointUrl, boolean enableLogger) {
-        this.token = token;
-        this.serviceRootEndpointUrl = serviceRootEndpointUrl;
+    public RestClientConfiguration(final String account,
+                                   final String secret,
+                                   final String zeroconfURL,
+                                   final boolean enableLogger) {
+        this.account = account;
+        this.secret = secret;
+        this.zeroconfURL = zeroconfURL;
         this.debugMode = enableLogger;
     }
 
@@ -73,30 +82,43 @@ public class RestClientConfiguration implements Serializable {
         this.debugMode = debugMode;
     }
 
-    public String getToken() {
-        return token;
+    public String getSecret() {
+        return secret;
     }
 
-    public String getServiceRootEndpointUrl() {
-        return serviceRootEndpointUrl;
+    public String getZeroconfURL() {
+        return zeroconfURL;
     }
 
     public Integer getQueryCallstackDepth() {
         return queryCallstackDepth;
     }
 
-    public void setToken(String token) {
-        this.token = token;
+    public void setSecret(String secret) {
+        this.secret = secret;
+    }
+
+    public String getAccount() {
+        return account;
+    }
+
+    public void setAccount(String account) {
+        this.account = account;
+    }
+
+    public void setZeroconfURL(String zeroconfURL) {
+        this.zeroconfURL = zeroconfURL;
     }
 
     @Override
     public String toString() {
         return "RestClientConfiguration{" +
-                "dryRunMode=" + dryRunMode +
-                ", debugMode=" + debugMode +
-                ", token='" + token + '\'' +
-                ", serviceRootEndpointUrl='" + serviceRootEndpointUrl + '\'' +
-                ", queryCallstackDepth=" + queryCallstackDepth +
-                '}';
+            "dryRunMode=" + dryRunMode +
+            ", debugMode=" + debugMode +
+            ", secret='" + secret + '\'' +
+            ", account='" + account + '\'' +
+            ", zeroconfURL='" + zeroconfURL + '\'' +
+            ", queryCallstackDepth=" + queryCallstackDepth +
+            '}';
     }
 }

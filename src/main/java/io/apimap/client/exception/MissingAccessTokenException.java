@@ -16,16 +16,16 @@ limitations under the License.
 
 package io.apimap.client.exception;
 
-public class IllegalApiVersionException extends Exception {
-    public IllegalApiVersionException(Throwable cause) {
+public class MissingAccessTokenException extends Exception {
+    public MissingAccessTokenException(Throwable cause) {
         super(cause);
     }
 
-    public IllegalApiVersionException(String message) {
+    public MissingAccessTokenException(String message) {
         super(message);
     }
 
-    public IllegalApiVersionException() {
+    public MissingAccessTokenException() {
         super();
     }
 
