@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'de.gliderpilot.semantic-release' version '1.4.2'
-    id "com.github.spotbugs" version "5.0.9"
+    id "com.github.spotbugs" version "5.0.14"
 }
 
 group 'io.apimap.client'
