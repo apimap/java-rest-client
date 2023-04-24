@@ -50,7 +50,7 @@ configurations {
 
 dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.14.2'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.15.0'
     implementation 'commons-io:commons-io:2.11.0'
 
     api "org.apache.httpcomponents.client5:httpclient5:5.2.1"
