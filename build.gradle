@@ -57,11 +57,11 @@ dependencies {
     implementation 'com.github.spotbugs:spotbugs-annotations:4.7.3'
     implementation 'io.apimap.api:rest-interface:2.3.0'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
     testImplementation 'org.mockito:mockito-junit-jupiter:5.3.0'
     testImplementation 'org.mockito:mockito-core:5.3.0'
 
-    integrationTestImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
+    integrationTestImplementation 'org.junit.jupiter:junit-jupiter:5.9.3'
     integrationTestImplementation 'org.mockito:mockito-junit-jupiter:5.3.0'
     integrationTestImplementation 'org.mockito:mockito-core:5.3.0'
 }
