@@ -49,7 +49,7 @@ configurations {
 }
 
 dependencies {
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.14.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.14.2'
     implementation 'commons-io:commons-io:2.11.0'
 
